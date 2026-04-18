@@ -20,7 +20,9 @@ class TxRecord {
   final TxStatus status;
   final BigInt? gasUsed;
 
-  bool get isSent => from.toLowerCase() == from.toLowerCase();
+  // NOTE: isSent is intentionally not a getter on the model because it
+  // requires the wallet's current address as context.  Use
+  // TransactionTile(currentAddress: ...) for display logic.
 
   TxRecord copyWith({TxStatus? status, BigInt? gasUsed}) {
     return TxRecord(

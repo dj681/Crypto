@@ -1,7 +1,7 @@
-import 'package:bip39/bip39.dart' as bip39;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'package:my_crypto_safe/models/tx_record.dart';
 import 'package:my_crypto_safe/services/wallet_service.dart';
 
 // In-memory stub for FlutterSecureStorage.
@@ -172,17 +172,58 @@ void main() {
       expect(history, isEmpty);
     });
 
-    test('appendTransaction persists and loads correctly', () async {
+    test('appendTransaction persists and can be loaded back', () async {
       const mnemonic =
           'abandon abandon abandon abandon abandon abandon '
           'abandon abandon abandon abandon abandon about';
       await service.createWallet(mnemonic);
 
-      // We cannot import TxRecord without depending on it, but since
-      // services/wallet_service.dart already imports tx_record.dart
-      // this is valid within the package tests.
+      final record = TxRecord(
+        txHash: '0xabc123',
+        from: '0xFromAddress',
+        to: '0xToAddress',
+        valueEth: 0.5,
+        timestamp: DateTime(2024, 1, 15, 10, 30),
+        status: TxStatus.confirmed,
+      );
+
+      await service.appendTransaction(record);
       final history = await service.loadHistory();
-      expect(history, isEmpty);
+
+      expect(history, hasLength(1));
+      expect(history.first.txHash, equals('0xabc123'));
+      expect(history.first.valueEth, equals(0.5));
+      expect(history.first.status, equals(TxStatus.confirmed));
+    });
+
+    test('appendTransaction inserts newest first', () async {
+      const mnemonic =
+          'abandon abandon abandon abandon abandon abandon '
+          'abandon abandon abandon abandon abandon about';
+      await service.createWallet(mnemonic);
+
+      final first = TxRecord(
+        txHash: '0xfirst',
+        from: '0xA',
+        to: '0xB',
+        valueEth: 1.0,
+        timestamp: DateTime(2024, 1, 1),
+      );
+      final second = TxRecord(
+        txHash: '0xsecond',
+        from: '0xA',
+        to: '0xB',
+        valueEth: 2.0,
+        timestamp: DateTime(2024, 1, 2),
+      );
+
+      await service.appendTransaction(first);
+      await service.appendTransaction(second);
+      final history = await service.loadHistory();
+
+      expect(history, hasLength(2));
+      // Most recent should be at index 0.
+      expect(history.first.txHash, equals('0xsecond'));
     });
   });
 }

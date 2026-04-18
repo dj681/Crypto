@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.pushNamed(context, SettingsScreen.routeName),
-            tooltip: 'Parametres',
+            tooltip: 'Paramètres',
           ),
         ],
       ),
@@ -113,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                blockchainProvider.error ?? 'Erreur reseau',
+                                blockchainProvider.error ?? 'Erreur réseau',
                                 style: TextStyle(
                                     color: Theme.of(context)
                                         .colorScheme
@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Transactions recentes',
+                          'Transactions récentes',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         TextButton(

@@ -45,9 +45,9 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
-              title: const Text('Securiser avec un PIN ?'),
+              title: const Text('Sécuriser avec un PIN ?'),
               content: const Text(
-                'Nous recommandons de proteger votre portefeuille avec un code PIN.',
+                'Nous recommandons de protéger votre portefeuille avec un code PIN.',
               ),
               actions: [
                 TextButton(
@@ -103,18 +103,18 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
                 maxLines: 4,
                 autocorrect: false,
                 decoration: const InputDecoration(
-                  labelText: 'Phrase de recuperation',
+                  labelText: 'Phrase de récupération',
                   hintText: 'mot1 mot2 mot3 ...',
                   border: OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return 'La phrase de recuperation est requise';
+                    return 'La phrase de récupération est requise';
                   }
                   final wordCount = v.trim().split(RegExp(r'\s+')).length;
                   if (wordCount != 12 && wordCount != 24) {
-                    return 'La phrase doit contenir 12 ou 24 mots (actuellement: $wordCount)';
+                    return 'La phrase doit contenir 12 ou 24 mots (actuellement : $wordCount)';
                   }
                   return null;
                 },

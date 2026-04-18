@@ -41,9 +41,9 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
-              title: const Text('Securiser avec un PIN ?'),
+              title: const Text('Sécuriser avec un PIN ?'),
               content: const Text(
-                'Nous recommandons de proteger votre portefeuille avec un code PIN.',
+                'Nous recommandons de protéger votre portefeuille avec un code PIN.',
               ),
               actions: [
                 TextButton(
@@ -85,7 +85,7 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Creer un portefeuille')),
+      appBar: AppBar(title: const Text('Créer un portefeuille')),
       body: _step == _CreateStep.reveal
           ? _buildRevealStep()
           : _buildConfirmStep(),
@@ -111,8 +111,8 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Notez ces 12 mots dans l\'ordre et conservez-les en lieu sur. '
-                      'Ils sont la seule facon de recuperer votre portefeuille.',
+                      'Notez ces 12 mots dans l\'ordre et conservez-les en lieu sûr. '
+                      'Ils sont la seule façon de récupérer votre portefeuille.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onErrorContainer,
                       ),
@@ -130,7 +130,7 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
               Clipboard.setData(ClipboardData(text: _mnemonic));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                    content: Text('Phrase copiee (a stocker en securite)')),
+                    content: Text('Phrase copiée (à stocker en sécurité)')),
               );
             },
             icon: const Icon(Icons.copy),
@@ -141,7 +141,7 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
             value: _backedUp,
             onChanged: (v) => setState(() => _backedUp = v ?? false),
             title: const Text(
-                'J\'ai note ma phrase de recuperation en lieu sur'),
+                'J\'ai noté ma phrase de récupération en lieu sûr'),
             contentPadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 16),
@@ -209,7 +209,7 @@ class _WordConfirmationStepState extends State<_WordConfirmationStep> {
       final expected = widget.words[widget.indices[i]];
       final entered = _controllers[i].text.trim().toLowerCase();
       if (entered != expected) {
-        setState(() => _error = 'Mot n${widget.indices[i] + 1} incorrect.');
+        setState(() => _error = 'Mot n°${widget.indices[i] + 1} incorrect.');
         return;
       }
     }
@@ -225,19 +225,19 @@ class _WordConfirmationStepState extends State<_WordConfirmationStep> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Verification',
+            'Vérification',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
           const Text(
-            'Saisissez les mots demandes pour confirmer que vous avez bien note votre phrase.',
+            'Saisissez les mots demandés pour confirmer que vous avez bien noté votre phrase.',
           ),
           const SizedBox(height: 24),
           for (var i = 0; i < widget.indices.length; i++) ...[
             TextFormField(
               controller: _controllers[i],
               decoration: InputDecoration(
-                labelText: 'Mot n${widget.indices[i] + 1}',
+                labelText: 'Mot n°${widget.indices[i] + 1}',
                 border: const OutlineInputBorder(),
               ),
               autocorrect: false,
@@ -262,7 +262,7 @@ class _WordConfirmationStepState extends State<_WordConfirmationStep> {
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Creer le portefeuille'),
+                : const Text('Créer le portefeuille'),
           ),
         ],
       ),
