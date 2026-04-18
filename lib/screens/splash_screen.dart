@@ -32,8 +32,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // Load wallet and security state in parallel.
       await Future.wait([
-        walletProvider.loadWallet(),
-        securityProvider.init(),
+        walletProvider.loadWallet().catchError((e, st) {
+          debugPrint('Splash init failed during wallet load: $e\n$st');
+        }),
+        securityProvider.init().catchError((e, st) {
+          debugPrint('Splash init failed during security init: $e\n$st');
+        }),
       ]);
 
       if (!mounted) return;
@@ -49,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen> {
         Navigator.pushReplacementNamed(context, HomeScreen.routeName);
       }
     } catch (e, st) {
-      debugPrint('Splash init failed: $e\n$st');
+      debugPrint('Splash init failed with unexpected error: $e\n$st');
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
     }
