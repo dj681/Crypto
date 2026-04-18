@@ -15,7 +15,7 @@ class MarketService {
 
   Future<List<MarketTicker>> fetchBinanceMarket({
     int? limit,
-    String? quoteAsset,
+    String? quoteAsset = 'USDT',
   }) async {
     late final http.Response tickersResponse;
     late final http.Response exchangeInfoResponse;

@@ -23,6 +23,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _traderTabBottomPadding = 96.0;
+
   static const _tabTitles = [
     'Accueil',
     'Trader',
@@ -106,7 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   onOpenTrader: () => setState(() => _selectedIndex = 1),
                 ),
                 const BinanceMarketView(
-                  contentPadding: EdgeInsets.fromLTRB(16, 16, 16, 96),
+                  contentPadding:
+                      EdgeInsets.fromLTRB(16, 16, 16, _traderTabBottomPadding),
                   showIntroText: false,
                 ),
                 const _RewardsTab(),
