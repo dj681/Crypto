@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/blockchain_provider.dart';
+import '../providers/market_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_tile.dart';
 import 'history_screen.dart';
-import 'market_screen.dart';
 import 'receive_screen.dart';
 import 'send_screen.dart';
 import 'settings_screen.dart';
@@ -25,22 +25,50 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // Refresh balance when the home screen is first shown.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshBalance());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshBalance();
+      _refreshMarket();
+    });
   }
 
   void _refreshBalance() {
+    if (!mounted) return;
     final address = context.read<WalletProvider>().wallet?.address;
     if (address != null) {
       context.read<BlockchainProvider>().refreshBalance(address);
     }
   }
 
+  void _refreshMarket() {
+    if (!mounted) return;
+    final marketProvider = context.read<MarketProvider>();
+    if (marketProvider.isLoading) return;
+    marketProvider.refreshMarket();
+  }
+
+  String _formatPrice(double value) {
+    final precision = value >= 1000
+        ? 2
+        : value >= 1
+            ? 4
+            : value >= 0.01
+                ? 6
+                : 8;
+    var formatted = value.toStringAsFixed(precision);
+    if (formatted.contains('.')) {
+      formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+    }
+    return formatted;
+  }
+
   @override
   Widget build(BuildContext context) {
     final walletProvider = context.watch<WalletProvider>();
     final blockchainProvider = context.watch<BlockchainProvider>();
+    final marketProvider = context.watch<MarketProvider>();
     final wallet = walletProvider.wallet;
     final recentHistory = walletProvider.history.take(5).toList();
+    final marketTickers = marketProvider.tickers.take(8).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -90,15 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _ActionButton(
-                          icon: Icons.candlestick_chart_outlined,
-                          label: 'Marché',
-                          onTap: () => Navigator.pushNamed(
-                              context, MarketScreen.routeName),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ActionButton(
                           icon: Icons.history,
                           label: 'Historique',
                           onTap: () => Navigator.pushNamed(
@@ -106,6 +125,62 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+                  Card(
+                    child: ExpansionTile(
+                      title: const Text('Marché Binance'),
+                      subtitle: const Text('Top paires USDT'),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: marketProvider.isLoading ? null : _refreshMarket,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Actualiser'),
+                          ),
+                        ),
+                        if (marketProvider.isLoading && marketTickers.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (marketProvider.status == MarketStatus.error)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              marketProvider.error ?? 'Erreur de chargement du marché.',
+                              style: TextStyle(color: Theme.of(context).colorScheme.error),
+                            ),
+                          )
+                        else if (marketTickers.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Text('Aucune donnée de marché disponible.'),
+                          )
+                        else
+                          ...marketTickers.map((ticker) {
+                            final positive = ticker.priceChangePercent >= 0;
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                              title: Text('${ticker.baseAsset}/${ticker.quoteAsset}'),
+                              subtitle:
+                                  Text('${_formatPrice(ticker.lastPrice)} ${ticker.quoteAsset}'),
+                              trailing: Text(
+                                '${positive ? '+' : ''}${ticker.priceChangePercent.toStringAsFixed(2)}%',
+                                style: TextStyle(
+                                  color: positive
+                                      ? Colors.green.shade700
+                                      : Theme.of(context).colorScheme.error,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 24),
                   if (blockchainProvider.status ==
