@@ -6,12 +6,13 @@ import '../models/tx_record.dart';
 /// Manages the web3dart RPC client and all blockchain read/write operations.
 class BlockchainService {
   BlockchainService({String? rpcUrl})
-      : _rpcUrl = rpcUrl ?? _defaultRpcUrl,
+      : _rpcUrl = _normalizeRpcUrl(rpcUrl),
         _httpClient = http.Client() {
     _initClient();
   }
 
-  static const String _defaultRpcUrl = 'https://rpc.ankr.com/eth';
+  static const String _defaultRpcUrl = 'https://ethereum.publicnode.com';
+  static const String _legacyAnkrRpcUrl = 'https://rpc.ankr.com/eth';
 
   String _rpcUrl;
   final http.Client _httpClient;
@@ -19,14 +20,25 @@ class BlockchainService {
 
   String get rpcUrl => _rpcUrl;
 
+  static String _normalizeRpcUrl(String? url) {
+    final trimmed = url?.trim();
+    if (trimmed == null || trimmed.isEmpty) return _defaultRpcUrl;
+    final normalized = trimmed.endsWith('/')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
+    if (normalized == _legacyAnkrRpcUrl) return _defaultRpcUrl;
+    return normalized;
+  }
+
   void _initClient() {
     _client = Web3Client(_rpcUrl, _httpClient);
   }
 
   /// Reconfigures the RPC endpoint (e.g. when the user changes it in Settings).
   void updateRpcUrl(String url) {
-    if (url == _rpcUrl) return;
-    _rpcUrl = url;
+    final nextUrl = _normalizeRpcUrl(url);
+    if (nextUrl == _rpcUrl) return;
+    _rpcUrl = nextUrl;
     _client.dispose();
     _initClient();
   }
