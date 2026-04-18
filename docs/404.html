@@ -6,20 +6,10 @@
     <title>Redirection…</title>
     <script>
       (function () {
-        const parts = window.location.pathname.split("/").filter(Boolean);
-        const host = window.location.hostname.toLowerCase();
-        const githubPagesMatch = host.match(/^([^.]+)\.github\.io$/);
-        const isGitHubPagesHost = githubPagesMatch !== null;
-        const username = isGitHubPagesHost ? githubPagesMatch[1] : "";
-        let basePath = "/";
-
-        if (isGitHubPagesHost && parts.length > 0) {
-          if (parts[0].toLowerCase() !== username) {
-            // GitHub project page: /<repo>/<...>
-            basePath = "/" + parts[0] + "/";
-          }
-        }
-
+        const projectBasePath = "/Crypto/";
+        const basePath = window.location.pathname.startsWith(projectBasePath)
+          ? projectBasePath
+          : "/";
         window.location.replace(window.location.origin + basePath);
       })();
     </script>
