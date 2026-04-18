@@ -69,7 +69,7 @@ class _SendScreenState extends State<SendScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Confirmer l'envoi'),
+            title: const Text("Confirmer l'envoi"),
             content: Text(
               'Envoyer ${_amountController.text.trim()} ETH vers '
               '${_toController.text.trim()}?',

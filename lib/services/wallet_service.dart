@@ -65,7 +65,7 @@ class WalletService {
   Future<WalletModel> importWallet(String mnemonic) async {
     final cleaned = mnemonic.trim().toLowerCase();
     if (!validateMnemonic(cleaned)) {
-      throw ArgumentError('La phrase mnémonique fournie n'est pas valide.');
+      throw ArgumentError("La phrase mnémonique fournie n'est pas valide.");
     }
     return _deriveAndPersist(cleaned);
   }

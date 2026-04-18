@@ -38,7 +38,7 @@ class BlockchainService {
   Future<double> getBalance(String address) async {
     final ethAddress = EthereumAddress.fromHex(address);
     final amount = await _client
-        .getEtherBalance(ethAddress)
+        .getBalance(ethAddress)
         .timeout(const Duration(seconds: 20));
     return amount.getValueInUnit(EtherUnit.ether).toDouble();
   }

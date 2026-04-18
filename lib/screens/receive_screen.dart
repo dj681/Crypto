@@ -71,7 +71,7 @@ class ReceiveScreen extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.copy),
-                    tooltip: 'Copier l'adresse',
+                    tooltip: "Copier l'adresse",
                   ),
                 ],
               ),
@@ -88,7 +88,7 @@ class ReceiveScreen extends StatelessWidget {
                 );
               },
               icon: const Icon(Icons.share),
-              label: const Text('Copier l'adresse'),
+              label: const Text("Copier l'adresse"),
             ),
           ],
         ),
