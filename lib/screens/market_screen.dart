@@ -50,7 +50,7 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final marketProvider = context.read<MarketProvider>();
-      if (marketProvider.isLoading || marketProvider.tickers.isNotEmpty) return;
+      if (marketProvider.isLoading) return;
       marketProvider.refreshMarket();
     });
   }

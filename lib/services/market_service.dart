@@ -17,13 +17,24 @@ class MarketService {
     int? limit,
     String? quoteAsset,
   }) async {
-    final responses = await Future.wait([
-      _httpClient.get(_tickerUri).timeout(const Duration(seconds: 20)),
-      _httpClient.get(_exchangeInfoUri).timeout(const Duration(seconds: 20)),
-    ]);
+    late final http.Response tickersResponse;
+    late final http.Response exchangeInfoResponse;
 
-    final tickersResponse = responses[0];
-    final exchangeInfoResponse = responses[1];
+    try {
+      tickersResponse = await _httpClient
+          .get(_tickerUri)
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      throw StateError('Erreur réseau Binance ticker: $e');
+    }
+
+    try {
+      exchangeInfoResponse = await _httpClient
+          .get(_exchangeInfoUri)
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      throw StateError('Erreur réseau Binance exchangeInfo: $e');
+    }
 
     if (tickersResponse.statusCode != 200) {
       throw StateError('Erreur Binance ticker (${tickersResponse.statusCode})');

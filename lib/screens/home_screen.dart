@@ -150,6 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _AccueilTab extends StatelessWidget {
+  static const int _maxHomeMarketTickers = 12;
+
   const _AccueilTab({
     required this.wallet,
     required this.walletProvider,
@@ -173,7 +175,8 @@ class _AccueilTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recentHistory = walletProvider.history.take(5).toList();
-    final marketTickers = marketProvider.tickers.take(12).toList();
+    final marketTickers =
+        marketProvider.tickers.take(_maxHomeMarketTickers).toList();
 
     return RefreshIndicator(
       onRefresh: () => blockchainProvider.refreshBalance(wallet.address),
