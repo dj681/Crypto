@@ -48,7 +48,7 @@ class _MarketScreenState extends State<MarketScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              'Marché spot Binance (USDT). Les ordres d’achat et de vente sont exécutés sur Binance.',
+              'Marché spot Binance (USDT). Les actions Achat/Vente ouvrent Binance pour finaliser les ordres.',
             ),
             const SizedBox(height: 16),
             if (marketProvider.isLoading && tickers.isEmpty)
