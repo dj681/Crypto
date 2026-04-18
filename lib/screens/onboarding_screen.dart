@@ -8,7 +8,7 @@ class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   static const String routeName = '/onboarding';
-  static final Uri _pwaUri = Uri.parse('https://dj681.github.io/Crypto/');
+  static final Uri _pwaUri = Uri.parse('https://dj681-crypto.netlify.app/');
 
   Future<void> _openExternalLink(BuildContext context, Uri uri) async {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);

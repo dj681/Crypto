@@ -93,19 +93,10 @@ test/
    flutter test
    ```
 
-## Déploiement GitHub Pages (Web)
-
-- Le dépôt inclut un workflow GitHub Actions (`.github/workflows/deploy_pages.yml`)
-  qui build l'application Flutter Web puis la publie sur GitHub Pages.
-- Le workflow active et génère la plateforme Web (`flutter create . --platforms web`)
-  avant le build, afin de fonctionner même si le dossier `web/` n'est pas versionné.
-- Le build utilise `--base-href /Crypto/` pour le projet `dj681/Crypto`.
-- Un `404.html` est ajouté à l'artefact publié pour rediriger vers l'accueil et
-  éviter la page introuvable lors d'un rechargement sur une route interne.
-
 ## Déploiement Netlify (PWA)
 
-- Le dépôt inclut une configuration Netlify prête à l'emploi via `netlify.toml`.
+- Le déploiement PWA est assuré via Netlify (et non GitHub Pages) avec la
+  configuration `netlify.toml`.
 - Le build est exécuté par `scripts/netlify_build.sh`, qui :
   - installe Flutter (en cache Netlify),
   - active la plateforme Web (`flutter create . --platforms web`),
