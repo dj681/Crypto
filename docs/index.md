@@ -1,3 +1,3 @@
 # My Crypto Safe
 
-Documentation site placeholder for GitHub Pages.
+Documentation site placeholder for Netlify deployment.

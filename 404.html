@@ -6,11 +6,7 @@
     <title>Redirection…</title>
     <script>
       (function () {
-        const projectBasePath = "/Crypto/";
-        const basePath = window.location.pathname.startsWith(projectBasePath)
-          ? projectBasePath
-          : "/";
-        const targetUrl = new URL(basePath, window.location.origin);
+        const targetUrl = new URL("/", window.location.origin);
         targetUrl.search = window.location.search;
         targetUrl.hash = window.location.hash;
         window.location.replace(targetUrl.toString());
