@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
-                            onPressed: _refreshMarket,
+                            onPressed: marketProvider.isLoading ? null : _refreshMarket,
                             icon: const Icon(Icons.refresh),
                             label: const Text('Actualiser'),
                           ),
