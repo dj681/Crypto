@@ -26,8 +26,28 @@ class SecurityProvider extends ChangeNotifier {
   // ── initialise ────────────────────────────────────────────────────────────
 
   Future<void> init() async {
-    _hasPin = await _service.hasPin();
-    _biometricsAvailable = await _service.canUseBiometrics();
+    // Safe defaults if startup checks fail: no PIN and no biometrics available.
+    var hasPin = false;
+    var biometricsAvailable = false;
+
+    try {
+      hasPin = await _service.hasPin();
+    } catch (e, st) {
+      debugPrint(
+        'SecurityProvider.init failed during hasPin() - defaulting to no PIN: $e\n$st',
+      );
+    }
+
+    try {
+      biometricsAvailable = await _service.canUseBiometrics();
+    } catch (e, st) {
+      debugPrint(
+        'SecurityProvider.init failed during canUseBiometrics() - defaulting to unavailable: $e\n$st',
+      );
+    }
+
+    _hasPin = hasPin;
+    _biometricsAvailable = biometricsAvailable;
     // Lock the app on startup if a PIN has been set.
     _isLocked = _hasPin;
     notifyListeners();

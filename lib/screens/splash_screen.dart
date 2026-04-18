@@ -26,26 +26,34 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
-    final walletProvider = context.read<WalletProvider>();
-    final securityProvider = context.read<SecurityProvider>();
+    try {
+      final walletProvider = context.read<WalletProvider>();
+      final securityProvider = context.read<SecurityProvider>();
 
-    // Load wallet and security state in parallel.
-    await Future.wait([
-      walletProvider.loadWallet(),
-      securityProvider.init(),
-    ]);
+      // Load wallet and security state in parallel.
+      await Future.wait([
+        walletProvider.loadWallet(),
+        securityProvider.init(),
+      ]);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (!walletProvider.hasWallet) {
+      if (!walletProvider.hasWallet) {
+        Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
+        return;
+      }
+
+      if (securityProvider.isLocked) {
+        Navigator.pushReplacementNamed(context, LockScreen.routeName);
+      } else {
+        Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+      }
+    } catch (e, st) {
+      debugPrint(
+        'Splash init failed with unexpected error - navigating to onboarding: $e\n$st',
+      );
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
-      return;
-    }
-
-    if (securityProvider.isLocked) {
-      Navigator.pushReplacementNamed(context, LockScreen.routeName);
-    } else {
-      Navigator.pushReplacementNamed(context, HomeScreen.routeName);
     }
   }
 
