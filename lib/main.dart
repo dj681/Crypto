@@ -3,11 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'providers/blockchain_provider.dart';
+import 'providers/market_provider.dart';
 import 'providers/security_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
+import 'screens/market_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/pin_setup_screen.dart';
 import 'screens/receive_screen.dart';
@@ -17,6 +19,7 @@ import 'screens/splash_screen.dart';
 import 'screens/wallet_create_screen.dart';
 import 'screens/wallet_import_screen.dart';
 import 'services/blockchain_service.dart';
+import 'services/market_service.dart';
 import 'services/security_service.dart';
 import 'services/wallet_service.dart';
 
@@ -33,6 +36,7 @@ Future<void> main() async {
   final securityService = SecurityService();
   final blockchainService =
       BlockchainService(rpcUrl: savedRpcUrl);
+  final marketService = MarketService();
 
   runApp(
     MultiProvider(
@@ -48,6 +52,9 @@ Future<void> main() async {
             blockchainService: blockchainService,
             walletService: walletService,
           ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MarketProvider(marketService: marketService),
         ),
       ],
       child: MyCryptoSafeApp(navigatorKey: _navigatorKey),
@@ -117,6 +124,7 @@ class _MyCryptoSafeAppState extends State<MyCryptoSafeApp>
         SendScreen.routeName: (context) => const SendScreen(),
         ReceiveScreen.routeName: (context) => const ReceiveScreen(),
         HistoryScreen.routeName: (context) => const HistoryScreen(),
+        MarketScreen.routeName: (context) => const MarketScreen(),
         SettingsScreen.routeName: (context) => const SettingsScreen(),
         PinSetupScreen.routeName: (context) => const PinSetupScreen(),
         LockScreen.routeName: (context) => const LockScreen(),

@@ -10,20 +10,24 @@ lib/
   models/
     wallet.dart                   # Modèle immuable du portefeuille (sans secrets)
     tx_record.dart                # Enregistrement local de transaction
+    market_ticker.dart            # Données d'une paire du marché Binance
   services/
     wallet_service.dart           # BIP-39, dérivation de clé, stockage chiffré
     blockchain_service.dart       # Client web3dart : balance, envoi, gas
     security_service.dart         # PIN (SHA-256), biométrie (local_auth)
+    market_service.dart           # API publique Binance (ticker 24h)
   providers/
     wallet_provider.dart          # État global du portefeuille + historique
     blockchain_provider.dart      # Solde ETH, envoi de transactions
     security_provider.dart        # Session : verrouillage, PIN, biométrie
+    market_provider.dart          # État du marché Binance
   screens/
     splash_screen.dart            # Chargement initial (wallet/session)
     onboarding_screen.dart        # Choix : créer ou importer
     wallet_create_screen.dart     # Génération BIP-39 + confirmation des mots
     wallet_import_screen.dart     # Import par phrase mnémonique
     home_screen.dart              # Solde + actions rapides + transactions récentes
+    market_screen.dart            # Marché Binance + actions achat/vente
     send_screen.dart              # Envoi ETH
     receive_screen.dart           # QR code + adresse à copier
     history_screen.dart           # Historique complet des transactions
@@ -53,6 +57,8 @@ test/
 - Envoi de transactions ETH avec estimation des frais gas
 - Historique local des transactions (envoi/réception, statut)
 - URL RPC personnalisable depuis les paramètres
+- Marché Binance spot (paires USDT) avec actualisation
+- Actions Achat / Vente depuis l'app (redirection vers Binance)
 
 ### Sécurité
 - Code PIN (6 chiffres) avec hash SHA-256 en stockage sécurisé
