@@ -103,6 +103,17 @@ test/
 - Un `404.html` est ajouté à l'artefact publié pour rediriger vers l'accueil et
   éviter la page introuvable lors d'un rechargement sur une route interne.
 
+## Déploiement Netlify (PWA)
+
+- Le dépôt inclut une configuration Netlify prête à l'emploi via `netlify.toml`.
+- Le build est exécuté par `scripts/netlify_build.sh`, qui :
+  - installe Flutter (en cache Netlify),
+  - active la plateforme Web (`flutter create . --platforms web`),
+  - génère l'application avec `flutter build web --release --base-href /`.
+- Le dossier publié est `build/web`.
+- Une redirection SPA (`/* -> /index.html`, status 200) est configurée pour que
+  les routes Flutter continuent de fonctionner après rechargement de page.
+
 ## Configuration Android requise
 
 Dans `android/app/build.gradle`, s'assurer que :
