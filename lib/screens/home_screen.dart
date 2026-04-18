@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _refreshBalance() {
+    if (!mounted) return;
     final address = context.read<WalletProvider>().wallet?.address;
     if (address != null) {
       context.read<BlockchainProvider>().refreshBalance(address);
@@ -39,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _refreshMarket() {
+    if (!mounted) return;
     context.read<MarketProvider>().refreshMarket();
   }
 
