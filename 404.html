@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirection…</title>
+    <script>
+      (function () {
+        const parts = window.location.pathname.split("/").filter(Boolean);
+        const basePath = parts.length > 0 ? "/" + parts[0] + "/" : "/";
+        window.location.replace(window.location.origin + basePath);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirection vers la page d’accueil…</p>
+  </body>
+</html>
