@@ -95,7 +95,8 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
             children: [
               const Text(
                 'Saisissez vos 12 ou 24 mots de recuperation BIP-39, '
-                'separes par des espaces.',
+                'separes par des espaces. '
+                'La récupération avec seulement 3 mots n\'est pas prise en charge pour des raisons de sécurité.',
               ),
               const SizedBox(height: 24),
               TextFormField(
