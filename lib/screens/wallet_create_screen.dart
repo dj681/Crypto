@@ -110,12 +110,13 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      'Notez ces 12 mots dans l\'ordre et conservez-les en lieu sûr. '
-                      'Ils sont la seule façon de récupérer votre portefeuille.',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
+                     child: Text(
+                       'Notez ces 12 mots dans l\'ordre et conservez-les en lieu sûr. '
+                       'Ils sont la seule façon de récupérer votre portefeuille. '
+                       'Une sauvegarde réduite à 3 mots n\'est pas suffisamment sûre.',
+                       style: TextStyle(
+                         color: Theme.of(context).colorScheme.onErrorContainer,
+                       ),
                     ),
                   ),
                 ],

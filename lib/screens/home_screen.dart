@@ -6,6 +6,7 @@ import '../providers/wallet_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_tile.dart';
 import 'history_screen.dart';
+import 'market_screen.dart';
 import 'receive_screen.dart';
 import 'send_screen.dart';
 import 'settings_screen.dart';
@@ -84,6 +85,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           label: 'Recevoir',
                           onTap: () =>
                               Navigator.pushNamed(context, ReceiveScreen.routeName),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.candlestick_chart_outlined,
+                          label: 'Marché',
+                          onTap: () => Navigator.pushNamed(
+                              context, MarketScreen.routeName),
                         ),
                       ),
                       const SizedBox(width: 12),
