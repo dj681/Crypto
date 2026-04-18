@@ -16,10 +16,42 @@ class MarketScreen extends StatefulWidget {
 
 class _MarketScreenState extends State<MarketScreen> {
   @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Marché Binance')),
+      body: const BinanceMarketView(
+        contentPadding: EdgeInsets.all(16),
+        showIntroText: true,
+      ),
+    );
+  }
+}
+
+class BinanceMarketView extends StatefulWidget {
+  const BinanceMarketView({
+    super.key,
+    required this.contentPadding,
+    this.showIntroText = false,
+  });
+
+  final EdgeInsets contentPadding;
+  final bool showIntroText;
+
+  @override
+  State<BinanceMarketView> createState() => _BinanceMarketViewState();
+}
+
+class _BinanceMarketViewState extends State<BinanceMarketView> {
+  String _query = '';
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MarketProvider>().refreshMarket();
+      if (!mounted) return;
+      final marketProvider = context.read<MarketProvider>();
+      if (marketProvider.isLoading || marketProvider.tickers.isNotEmpty) return;
+      marketProvider.refreshMarket();
     });
   }
 
@@ -38,49 +70,77 @@ class _MarketScreenState extends State<MarketScreen> {
   @override
   Widget build(BuildContext context) {
     final marketProvider = context.watch<MarketProvider>();
-    final tickers = marketProvider.tickers;
+    final query = _query.trim().toUpperCase();
+    final tickers = query.isEmpty
+        ? marketProvider.tickers
+        : marketProvider.tickers
+            .where((ticker) =>
+                ticker.symbol.contains(query) ||
+                ticker.baseAsset.contains(query) ||
+                ticker.quoteAsset.contains(query))
+            .toList(growable: false);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Marché Binance')),
-      body: RefreshIndicator(
-        onRefresh: marketProvider.refreshMarket,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+    return RefreshIndicator(
+      onRefresh: marketProvider.refreshMarket,
+      child: ListView(
+        padding: widget.contentPadding,
+        children: [
+          if (widget.showIntroText) ...[
             const Text(
-              'Marché spot Binance (USDT). Les actions Achat/Vente ouvrent Binance pour finaliser les ordres.',
+              'Marché spot Binance. Toutes les paires disponibles sont listées ci-dessous.',
             ),
             const SizedBox(height: 16),
-            if (marketProvider.isLoading && tickers.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 48),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (marketProvider.status == MarketStatus.error)
-              Card(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    marketProvider.error ?? 'Erreur de chargement.',
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-                  ),
-                ),
-              )
-            else if (tickers.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 48),
-                child: Center(child: Text('Aucune donnée de marché disponible.')),
-              )
-            else
-              ...tickers.map((ticker) => _MarketTickerCard(
-                    ticker: ticker,
-                    onBuy: () => _openBinanceTrade(ticker, isBuy: true),
-                    onSell: () => _openBinanceTrade(ticker, isBuy: false),
-                  )),
           ],
-        ),
+          TextField(
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () => setState(() => _query = ''),
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Effacer',
+                    ),
+              hintText: 'Rechercher une crypto (ex: BTC, ETH, USDT)',
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (value) => setState(() => _query = value),
+          ),
+          const SizedBox(height: 12),
+          if (marketProvider.isLoading && marketProvider.tickers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 48),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (marketProvider.status == MarketStatus.error)
+            Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  marketProvider.error ?? 'Erreur de chargement.',
+                  style:
+                      TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                ),
+              ),
+            )
+          else if (tickers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 48),
+              child: Center(child: Text('Aucune donnée de marché disponible.')),
+            )
+          else ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('${tickers.length} paires affichées'),
+            ),
+            ...tickers.map((ticker) => _MarketTickerCard(
+                  ticker: ticker,
+                  onBuy: () => _openBinanceTrade(ticker, isBuy: true),
+                  onSell: () => _openBinanceTrade(ticker, isBuy: false),
+                )),
+          ],
+        ],
       ),
     );
   }
