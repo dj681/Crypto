@@ -91,6 +91,8 @@ test/
 
 - Le dépôt inclut un workflow GitHub Actions (`.github/workflows/deploy_pages.yml`)
   qui build l'application Flutter Web puis la publie sur GitHub Pages.
+- Le workflow active et génère la plateforme Web (`flutter create . --platforms web`)
+  avant le build, afin de fonctionner même si le dossier `web/` n'est pas versionné.
 - Le build utilise `--base-href /Crypto/` pour le projet `dj681/Crypto`.
 - Un `404.html` est ajouté à l'artefact publié pour rediriger vers l'accueil et
   éviter la page introuvable lors d'un rechargement sur une route interne.
