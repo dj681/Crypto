@@ -7,7 +7,20 @@
     <script>
       (function () {
         const parts = window.location.pathname.split("/").filter(Boolean);
-        const basePath = parts.length > 0 ? "/" + parts[0] + "/" : "/";
+        const host = window.location.hostname.toLowerCase();
+        const isGitHubPagesHost = host.endsWith(".github.io");
+        const username = isGitHubPagesHost ? host.split(".")[0] : "";
+        let basePath = "/";
+
+        if (parts.length > 0) {
+          if (!isGitHubPagesHost) {
+            basePath = "/" + parts[0] + "/";
+          } else if (parts[0].toLowerCase() !== username) {
+            // GitHub project page: /<repo>/<...>
+            basePath = "/" + parts[0] + "/";
+          }
+        }
+
         window.location.replace(window.location.origin + basePath);
       })();
     </script>
