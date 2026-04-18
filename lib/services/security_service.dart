@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -52,7 +53,9 @@ class SecurityService {
   // ── biometrics ────────────────────────────────────────────────────────────
 
   /// Returns true when the device can perform biometric authentication.
+  /// Always returns false on web (local_auth is not supported on that platform).
   Future<bool> canUseBiometrics() async {
+    if (kIsWeb) return false;
     try {
       return await _localAuth.canCheckBiometrics ||
           await _localAuth.isDeviceSupported();
@@ -62,8 +65,10 @@ class SecurityService {
   }
 
   /// Prompts the user for biometric / device authentication.
-  /// Returns true on success.
+  /// Returns true on successful authentication, false on failure or when
+  /// running on web (where local_auth is not supported).
   Future<bool> authenticateWithBiometrics(String localizedReason) async {
+    if (kIsWeb) return false;
     try {
       return await _localAuth.authenticate(
         localizedReason: localizedReason,
