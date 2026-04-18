@@ -8,8 +8,9 @@
       (function () {
         const parts = window.location.pathname.split("/").filter(Boolean);
         const host = window.location.hostname.toLowerCase();
-        const isGitHubPagesHost = host.endsWith(".github.io");
-        const username = isGitHubPagesHost ? host.split(".")[0] : "";
+        const githubPagesMatch = host.match(/^([^.]+)\.github\.io$/);
+        const isGitHubPagesHost = githubPagesMatch !== null;
+        const username = isGitHubPagesHost ? githubPagesMatch[1] : "";
         let basePath = "/";
 
         if (parts.length > 0) {
