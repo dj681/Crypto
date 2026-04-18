@@ -48,7 +48,8 @@ class _SplashScreenState extends State<SplashScreen> {
       } else {
         Navigator.pushReplacementNamed(context, HomeScreen.routeName);
       }
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Splash init failed: $e\n$st');
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
     }

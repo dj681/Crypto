@@ -31,7 +31,8 @@ class SecurityProvider extends ChangeNotifier {
       _biometricsAvailable = await _service.canUseBiometrics();
       // Lock the app on startup if a PIN has been set.
       _isLocked = _hasPin;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('SecurityProvider.init failed: $e\n$st');
       // If a platform plugin/storage call fails, keep app usable.
       _hasPin = false;
       _biometricsAvailable = false;
