@@ -13,10 +13,8 @@
         const username = isGitHubPagesHost ? githubPagesMatch[1] : "";
         let basePath = "/";
 
-        if (parts.length > 0) {
-          if (!isGitHubPagesHost) {
-            basePath = "/" + parts[0] + "/";
-          } else if (parts[0].toLowerCase() !== username) {
+        if (isGitHubPagesHost && parts.length > 0) {
+          if (parts[0].toLowerCase() !== username) {
             // GitHub project page: /<repo>/<...>
             basePath = "/" + parts[0] + "/";
           }
