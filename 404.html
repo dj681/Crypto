@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirection…</title>
+    <script>
+      (function () {
+        const projectBasePath = "/Crypto/";
+        const basePath = window.location.pathname.startsWith(projectBasePath)
+          ? projectBasePath
+          : "/";
+        const targetUrl = new URL(basePath, window.location.origin);
+        targetUrl.search = window.location.search;
+        targetUrl.hash = window.location.hash;
+        window.location.replace(targetUrl.toString());
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirection vers la page d’accueil…</p>
+  </body>
+</html>
