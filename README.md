@@ -26,8 +26,8 @@ lib/
     onboarding_screen.dart        # Choix : créer ou importer
     wallet_create_screen.dart     # Génération BIP-39 + confirmation des mots
     wallet_import_screen.dart     # Import par phrase mnémonique
-    home_screen.dart              # Solde + actions rapides + transactions récentes
-    market_screen.dart            # Marché Binance + actions achat/vente
+    home_screen.dart              # Interface principale (Accueil, Trader, Récompense, Découvrir, Convertir)
+    market_screen.dart            # Vue marché Binance complète + recherche + actions achat/vente
     send_screen.dart              # Envoi ETH
     receive_screen.dart           # QR code + adresse à copier
     history_screen.dart           # Historique complet des transactions
@@ -57,7 +57,7 @@ test/
 - Envoi de transactions ETH avec estimation des frais gas
 - Historique local des transactions (envoi/réception, statut)
 - URL RPC personnalisable depuis les paramètres
-- Marché Binance spot (paires USDT) avec actualisation
+- Marché Binance spot complet (toutes les paires disponibles) avec actualisation
 - Actions Achat / Vente depuis l'app (redirection vers Binance)
 
 ### Sécurité
