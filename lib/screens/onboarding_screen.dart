@@ -13,7 +13,8 @@ class OnboardingScreen extends StatelessWidget {
 
   Future<void> _openStore(BuildContext context, Uri uri) async {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!context.mounted || launched) return;
+    if (!context.mounted) return;
+    if (launched) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Impossible d’ouvrir le store.')),
     );
