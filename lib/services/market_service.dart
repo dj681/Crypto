@@ -34,17 +34,22 @@ class MarketService {
       final baseAsset =
           symbol.substring(0, symbol.length - normalizedQuoteAsset.length);
       if (baseAsset.isEmpty) continue;
+      final lastPrice = double.tryParse(item['lastPrice']?.toString() ?? '');
+      final priceChangePercent =
+          double.tryParse(item['priceChangePercent']?.toString() ?? '');
+      final quoteVolume = double.tryParse(item['quoteVolume']?.toString() ?? '');
+      if (lastPrice == null || priceChangePercent == null || quoteVolume == null) {
+        continue;
+      }
 
       tickers.add(
         MarketTicker(
           symbol: symbol,
           baseAsset: baseAsset,
           quoteAsset: normalizedQuoteAsset,
-          lastPrice: double.tryParse(item['lastPrice']?.toString() ?? '') ?? 0,
-          priceChangePercent:
-              double.tryParse(item['priceChangePercent']?.toString() ?? '') ?? 0,
-          quoteVolume:
-              double.tryParse(item['quoteVolume']?.toString() ?? '') ?? 0,
+          lastPrice: lastPrice,
+          priceChangePercent: priceChangePercent,
+          quoteVolume: quoteVolume,
         ),
       );
     }

@@ -43,5 +43,25 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
+
+    test('fetchBinanceMarket ignores rows with invalid numeric values', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          '''
+[
+  {"symbol":"SOLUSDT","lastPrice":"invalid","priceChangePercent":"1.1","quoteVolume":"4000"},
+  {"symbol":"ADAUSDT","lastPrice":"0.50","priceChangePercent":"-0.5","quoteVolume":"3000"}
+]
+''',
+          200,
+        );
+      });
+
+      final service = MarketService(httpClient: mockClient);
+      final tickers = await service.fetchBinanceMarket();
+
+      expect(tickers.length, 1);
+      expect(tickers.first.symbol, 'ADAUSDT');
+    });
   });
 }

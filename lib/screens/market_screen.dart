@@ -97,6 +97,21 @@ class _MarketTickerCard extends StatelessWidget {
   final VoidCallback onBuy;
   final VoidCallback onSell;
 
+  String _formatPrice(double value) {
+    final precision = value >= 1000
+        ? 2
+        : value >= 1
+            ? 4
+            : value >= 0.01
+                ? 6
+                : 8;
+    var formatted = value.toStringAsFixed(precision);
+    if (formatted.contains('.')) {
+      formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+    }
+    return formatted;
+  }
+
   @override
   Widget build(BuildContext context) {
     final positive = ticker.priceChangePercent >= 0;
@@ -121,7 +136,7 @@ class _MarketTickerCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 2),
-                      Text('Prix: ${ticker.lastPrice.toStringAsFixed(6)} ${ticker.quoteAsset}'),
+                      Text('Prix: ${_formatPrice(ticker.lastPrice)} ${ticker.quoteAsset}'),
                     ],
                   ),
                 ),
