@@ -56,7 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Supprimer le portefeuille'),
             content: const Text(
               'Cette action supprime définitivement les données du portefeuille de cet appareil. '
-              'Assurez-vous d'avoir sauvegardé votre phrase de récupération.',
+              "Assurez-vous d'avoir sauvegardé votre phrase de récupération.",
             ),
             actions: [
               TextButton(

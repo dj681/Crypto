@@ -28,7 +28,7 @@ class HistoryScreen extends StatelessWidget {
                     color: Theme.of(context).colorScheme.outlineVariant,
                   ),
                   const SizedBox(height: 16),
-                  const Text('Aucune transaction pour l'instant'),
+                  const Text("Aucune transaction pour l'instant"),
                 ],
               ),
             )
