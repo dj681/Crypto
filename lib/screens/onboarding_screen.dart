@@ -8,15 +8,14 @@ class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   static const String routeName = '/onboarding';
-  static final Uri _googlePlayUri = Uri.parse('https://play.google.com/store');
-  static final Uri _appStoreUri = Uri.parse('https://www.apple.com/app-store/');
+  static final Uri _pwaUri = Uri.parse('https://dj681.github.io/Crypto/');
 
-  Future<void> _openStore(BuildContext context, Uri uri) async {
+  Future<void> _openExternalLink(BuildContext context, Uri uri) async {
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!context.mounted) return;
     if (launched) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Impossible d’ouvrir le store.')),
+      const SnackBar(content: Text('Impossible d’ouvrir le lien.')),
     );
   }
 
@@ -30,55 +29,6 @@ class OnboardingScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.phone_android,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSecondaryContainer,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Téléchargez aussi l’application mobile pour accéder à My Crypto Safe partout.',
-                              style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSecondaryContainer,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          FilledButton.tonal(
-                            onPressed: () => _openStore(context, _googlePlayUri),
-                            child: const Text('Google Play'),
-                          ),
-                          FilledButton.tonal(
-                            onPressed: () => _openStore(context, _appStoreUri),
-                            child: const Text('App Store'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
               const Text(
                 'My Crypto Safe',
                 textAlign: TextAlign.center,
@@ -102,6 +52,11 @@ class OnboardingScreen extends StatelessWidget {
                   Navigator.pushNamed(context, WalletImportScreen.routeName);
                 },
                 child: const Text('Importer un portefeuille'),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                onPressed: () => _openExternalLink(context, _pwaUri),
+                child: const Text('Progressive Web App'),
               ),
             ],
           ),
