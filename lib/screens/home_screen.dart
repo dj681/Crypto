@@ -41,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _refreshMarket() {
     if (!mounted) return;
-    context.read<MarketProvider>().refreshMarket();
+    final marketProvider = context.read<MarketProvider>();
+    if (marketProvider.isLoading) return;
+    marketProvider.refreshMarket();
   }
 
   String _formatPrice(double value) {
