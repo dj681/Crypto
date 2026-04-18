@@ -10,7 +10,8 @@
         const basePath = window.location.pathname.startsWith(projectBasePath)
           ? projectBasePath
           : "/";
-        window.location.replace(window.location.origin + basePath);
+        const suffix = window.location.search + window.location.hash;
+        window.location.replace(window.location.origin + basePath + suffix);
       })();
     </script>
   </head>
