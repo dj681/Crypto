@@ -87,6 +87,14 @@ test/
    flutter test
    ```
 
+## Déploiement GitHub Pages (Web)
+
+- Le dépôt inclut un workflow GitHub Actions (`.github/workflows/deploy_pages.yml`)
+  qui build l'application Flutter Web puis la publie sur GitHub Pages.
+- Le build utilise `--base-href /Crypto/` pour le projet `dj681/Crypto`.
+- Un `404.html` est ajouté à l'artefact publié pour rediriger vers l'accueil et
+  éviter la page introuvable lors d'un rechargement sur une route interne.
+
 ## Configuration Android requise
 
 Dans `android/app/build.gradle`, s'assurer que :
