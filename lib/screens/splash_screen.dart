@@ -32,12 +32,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
       // Load wallet and security state in parallel.
       await Future.wait([
-        walletProvider.loadWallet().catchError((e, st) {
-          debugPrint('Splash init failed during wallet load: $e\n$st');
-        }),
-        securityProvider.init().catchError((e, st) {
-          debugPrint('Splash init failed during security init: $e\n$st');
-        }),
+        walletProvider.loadWallet(),
+        securityProvider.init(),
       ]);
 
       if (!mounted) return;
