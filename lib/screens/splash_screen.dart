@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'onboarding_screen.dart';
@@ -15,10 +17,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
-    });
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
+      }),
+    );
   }
 
   @override
