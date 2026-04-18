@@ -21,12 +21,12 @@ class MarketService {
       _httpClient
           .get(_tickerUri)
           .timeout(const Duration(seconds: 20))
-          .catchError((Object e) => throw StateError('Erreur réseau Binance ticker: $e')),
+          .catchError((Object e) => throw StateError('Erreur réseau Binance ticker.')),
       _httpClient
           .get(_exchangeInfoUri)
           .timeout(const Duration(seconds: 20))
-          .catchError((Object e) =>
-              throw StateError('Erreur réseau Binance exchangeInfo: $e')),
+          .catchError(
+              (Object e) => throw StateError('Erreur réseau Binance exchangeInfo.')),
     ]);
 
     final tickersResponse = responses[0];
