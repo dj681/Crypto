@@ -26,10 +26,17 @@ class SecurityProvider extends ChangeNotifier {
   // ── initialise ────────────────────────────────────────────────────────────
 
   Future<void> init() async {
-    _hasPin = await _service.hasPin();
-    _biometricsAvailable = await _service.canUseBiometrics();
-    // Lock the app on startup if a PIN has been set.
-    _isLocked = _hasPin;
+    try {
+      _hasPin = await _service.hasPin();
+      _biometricsAvailable = await _service.canUseBiometrics();
+      // Lock the app on startup if a PIN has been set.
+      _isLocked = _hasPin;
+    } catch (_) {
+      // If a platform plugin/storage call fails, keep app usable.
+      _hasPin = false;
+      _biometricsAvailable = false;
+      _isLocked = false;
+    }
     notifyListeners();
   }
 
