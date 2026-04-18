@@ -1,0 +1,9 @@
+[build]
+  command = "bash scripts/netlify_build.sh"
+  publish = "build/web"
+
+# SPA fallback: redirect all routes to index.html so Flutter's router works
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
