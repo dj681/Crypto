@@ -1,47 +1,115 @@
-# My Crypto Safe (starter Flutter)
+# My Crypto Safe
 
-## Objectif
-Ce dépôt initialise la base de l’application mobile **My Crypto Safe** avec une architecture Flutter claire et une navigation fonctionnelle entre les premiers écrans.
+Application mobile Flutter de portefeuille crypto sécurisé.
 
 ## Architecture
-Structure actuelle :
 
-- `lib/main.dart` : point d’entrée, `MaterialApp`, thème et routes.
-- `lib/screens/` : écrans de démarrage.
-  - `splash_screen.dart`
-  - `onboarding_screen.dart`
-  - `wallet_create_screen.dart`
-  - `wallet_import_screen.dart`
-  - `home_screen.dart`
-- `lib/widgets/` : composants UI réutilisables (à compléter).
-- `lib/models/` : modèles métier (à compléter).
-- `lib/services/` : services applicatifs (à compléter).
+```
+lib/
+  main.dart                       # Point d'entrée : MultiProvider, NavigatorKey, cycle de vie
+  models/
+    wallet.dart                   # Modèle immuable du portefeuille (sans secrets)
+    tx_record.dart                # Enregistrement local de transaction
+  services/
+    wallet_service.dart           # BIP-39, dérivation de clé, stockage chiffré
+    blockchain_service.dart       # Client web3dart : balance, envoi, gas
+    security_service.dart         # PIN (SHA-256), biométrie (local_auth)
+  providers/
+    wallet_provider.dart          # État global du portefeuille + historique
+    blockchain_provider.dart      # Solde ETH, envoi de transactions
+    security_provider.dart        # Session : verrouillage, PIN, biométrie
+  screens/
+    splash_screen.dart            # Chargement initial (wallet/session)
+    onboarding_screen.dart        # Choix : créer ou importer
+    wallet_create_screen.dart     # Génération BIP-39 + confirmation des mots
+    wallet_import_screen.dart     # Import par phrase mnémonique
+    home_screen.dart              # Solde + actions rapides + transactions récentes
+    send_screen.dart              # Envoi ETH
+    receive_screen.dart           # QR code + adresse à copier
+    history_screen.dart           # Historique complet des transactions
+    settings_screen.dart          # Sécurité, réseau RPC, danger zone
+    pin_setup_screen.dart         # Configuration / changement du PIN
+    lock_screen.dart              # Écran de déverrouillage (PIN ou biométrie)
+  widgets/
+    balance_card.dart             # Carte du solde avec actualisation
+    transaction_tile.dart         # Ligne d'historique de transaction
+    mnemonic_grid.dart            # Grille de la phrase mnémonique
+    pin_pad.dart                  # Pavé numérique de saisie PIN
+test/
+  wallet_service_test.dart        # Tests unitaires du service wallet
+  security_provider_test.dart     # Tests unitaires PIN, biométrie, session
+```
+
+## Fonctionnalités implémentées
+
+### Gestion du portefeuille
+- Génération BIP-39 (12 mots) avec étape de confirmation obligatoire
+- Import par phrase mnémonique avec validation stricte
+- Dérivation déterministe de la clé privée Ethereum depuis la seed BIP-39
+- Stockage chiffré (FlutterSecureStorage : Keychain iOS / Keystore Android)
+
+### Blockchain
+- Solde ETH en temps réel via un nœud RPC public (Ankr, configurable)
+- Envoi de transactions ETH avec estimation des frais gas
+- Historique local des transactions (envoi/réception, statut)
+- URL RPC personnalisable depuis les paramètres
+
+### Sécurité
+- Code PIN (6 chiffres) avec hash SHA-256 en stockage sécurisé
+- Déverrouillage biométrique (empreinte / Face ID) via local_auth
+- Verrouillage automatique après 5 minutes d'inactivité en arrière-plan
+- Verrouillage manuel depuis les paramètres
+- Effacement sécurisé de toutes les données depuis les paramètres
+
+### Navigation
+- Redirection intelligente au démarrage (onboarding / lock / home)
+- Observer du cycle de vie de l'application pour le verrouillage de session
 
 ## Installation
-1. Installer Flutter et vérifier l’environnement :
-   - `flutter doctor`
+
+1. Installer Flutter et vérifier l'environnement :
+   ```
+   flutter doctor
+   ```
+
 2. Installer les dépendances :
-   - `flutter pub get`
-3. Lancer l’application :
-   - `flutter run`
+   ```
+   flutter pub get
+   ```
+
+3. Lancer l'application :
+   ```
+   flutter run
+   ```
+
+4. Exécuter les tests :
+   ```
+   flutter test
+   ```
+
+## Configuration Android requise
+
+Dans `android/app/build.gradle`, s'assurer que :
+- `minSdkVersion` >= 23 (requis par `local_auth` pour la biométrie)
 
 ## Dépendances clés
-Le fichier `pubspec.yaml` inclut les paquets de base pour la suite du projet :
 
-- `provider`
-- `flutter_secure_storage`
-- `bip39`
-- `web3dart`
-- `http`
-- `qr_flutter`
-- `local_auth`
-- `shared_preferences`
+| Paquet | Usage |
+|---|---|
+| `provider` | Gestion d'état global (ChangeNotifier) |
+| `flutter_secure_storage` | Stockage chiffré des secrets |
+| `bip39` | Génération et validation des phrases mnémoniques |
+| `web3dart` | Client Ethereum RPC |
+| `http` | Transport HTTP pour web3dart |
+| `qr_flutter` | Affichage QR code de l'adresse |
+| `local_auth` | Authentification biométrique |
+| `shared_preferences` | Préférences non-sensibles (URL RPC) |
+| `crypto` | Hachage SHA-256 du PIN |
 
-## Suite prévue
-Prochaines étapes recommandées :
+## Note sur la dérivation de clé
 
-1. Génération/import sécurisé de wallet (BIP39 + stockage chiffré).
-2. Gestion d’état globale avec `provider`.
-3. Intégration réseau blockchain (`web3dart`) et affichage des soldes.
-4. Écrans d’actions (envoi/réception, historique, paramètres).
-5. Renforcement sécurité (PIN, biométrie, verrouillage session).
+La clé privée Ethereum est dérivée des 32 premiers octets de la seed BIP-39
+(64 octets). Cette dérivation est déterministe et reproductible depuis la phrase
+mnémonique, mais n'est pas conforme BIP-44. Une dérivation complète
+(chemin `m/44'/60'/0'/0/0`) peut être ajoutée ultérieurement avec une
+bibliothèque BIP-32 dédiée.
