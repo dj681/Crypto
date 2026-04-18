@@ -53,7 +53,7 @@ test/
 - Stockage chiffré (FlutterSecureStorage : Keychain iOS / Keystore Android)
 
 ### Blockchain
-- Solde ETH en temps réel via un nœud RPC public (Ankr, configurable)
+- Solde ETH en temps réel via un nœud RPC public (configurable)
 - Envoi de transactions ETH avec estimation des frais gas
 - Historique local des transactions (envoi/réception, statut)
 - URL RPC personnalisable depuis les paramètres

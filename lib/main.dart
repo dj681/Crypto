@@ -28,7 +28,7 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load persisted RPC URL (defaults to Ankr public endpoint).
+  // Load persisted RPC URL (defaults to a public endpoint without API key).
   final prefs = await SharedPreferences.getInstance();
   final savedRpcUrl = prefs.getString('rpc_url');
 
