@@ -104,6 +104,9 @@ test/
 - Le dossier publié est `build/web`.
 - Une redirection SPA (`/* -> /index.html`, status 200) est configurée pour que
   les routes Flutter continuent de fonctionner après rechargement de page.
+- Le bouton **Progressive Web App** de l’onboarding lit l’URL via
+  `--dart-define=PWA_URL=...` (fallback par défaut :
+  `https://dj681.github.io/Crypto/`).
 
 ## Configuration Android requise
 
