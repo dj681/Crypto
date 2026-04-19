@@ -33,9 +33,11 @@ class OnboardingScreen extends StatelessWidget {
 
   static Uri _defaultUriForPlatform() {
     if (kIsWeb) {
+      final port = Uri.base.port;
       return Uri(
         scheme: Uri.base.scheme,
         host: Uri.base.host,
+        port: port == 0 ? null : port,
         path: '/',
       );
     }
