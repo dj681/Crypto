@@ -27,4 +27,4 @@ flutter pub get
 
 # ── 4. Build ──────────────────────────────────────────────────────────────────
 # --base-href / → app is served at the Netlify site root.
-flutter build web --release --base-href /
+flutter build web --release --base-href / --dart-define=PWA_URL=https://mycryptosafe.fr/

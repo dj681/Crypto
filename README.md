@@ -93,22 +93,36 @@ test/
    flutter test
    ```
 
-## Déploiement Netlify (PWA)
+## Déploiement Web (mycryptosafe.fr)
 
-- Le déploiement PWA est assuré via Netlify (et non GitHub Pages) avec la
-  configuration `netlify.toml`.
-- Le build est exécuté par `scripts/netlify_build.sh`, qui :
-  - installe Flutter (en cache Netlify),
-  - active la plateforme Web (`flutter create . --platforms web`),
-  - génère l'application avec `flutter build web --release --base-href /`.
-- Le dossier publié est `build/web`.
-- Une redirection SPA (`/* -> /index.html`, status 200) est configurée pour que
-  les routes Flutter continuent de fonctionner après rechargement de page.
-- Le bouton **Progressive Web App** de l’onboarding lit l’URL via
-  `--dart-define=PWA_URL=...`.
-  - Si `PWA_URL` est absent/invalide : en Web, le bouton cible l’origine courante
-    (`/`) pour rester sur le site Netlify actif.
-  - Hors Web, le fallback reste `https://dj681-crypto.netlify.app/`.
+L'application est déployée sur **https://mycryptosafe.fr** via GitHub Pages et
+un workflow CI automatique (`.github/workflows/deploy_pages.yml`).
+
+### GitHub Pages (domaine principal)
+
+- À chaque push sur `main`, le workflow :
+  1. installe Flutter (stable, en cache),
+  2. active la plateforme Web (`flutter create . --platforms web`),
+  3. génère l'application avec
+     `flutter build web --release --base-href / --dart-define=PWA_URL=https://mycryptosafe.fr/`,
+  4. ajoute un fichier `CNAME` contenant `mycryptosafe.fr` dans `build/web`,
+  5. publie l'artefact via `actions/deploy-pages`.
+- Le domaine personnalisé `mycryptosafe.fr` doit être configuré dans les
+  paramètres du dépôt GitHub (Settings → Pages → Custom domain).
+- La redirection SPA est gérée via `404.html` qui renvoie vers `/index.html`.
+
+### Netlify (miroir optionnel)
+
+- La configuration `netlify.toml` + `scripts/netlify_build.sh` permet de
+  déployer l'app en miroir sur Netlify si besoin.
+- Le build passe `--dart-define=PWA_URL=https://mycryptosafe.fr/` pour que le
+  bouton PWA pointe toujours vers le domaine principal.
+
+### Bouton « Progressive Web App »
+
+- Il lit l'URL via `--dart-define=PWA_URL=https://mycryptosafe.fr/`.
+- Si `PWA_URL` est absent/invalide : en Web, le bouton cible l'origine courante
+  (`/`) ; hors Web, le fallback est `https://mycryptosafe.fr/`.
 
 ## Configuration Android requise
 
