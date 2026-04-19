@@ -105,8 +105,10 @@ test/
 - Une redirection SPA (`/* -> /index.html`, status 200) est configurée pour que
   les routes Flutter continuent de fonctionner après rechargement de page.
 - Le bouton **Progressive Web App** de l’onboarding lit l’URL via
-  `--dart-define=PWA_URL=...` (fallback par défaut :
-  `https://dj681-crypto.netlify.app/`).
+  `--dart-define=PWA_URL=...`.
+  - Si `PWA_URL` est absent/invalide : en Web, le bouton cible l’origine courante
+    (`/`) pour rester sur le site Netlify actif.
+  - Hors Web, le fallback reste `https://dj681-crypto.netlify.app/`.
 
 ## Configuration Android requise
 
