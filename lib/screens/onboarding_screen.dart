@@ -36,7 +36,6 @@ class OnboardingScreen extends StatelessWidget {
       return Uri(
         scheme: Uri.base.scheme,
         host: Uri.base.host,
-        port: Uri.base.hasPort ? Uri.base.port : null,
         path: '/',
       );
     }
