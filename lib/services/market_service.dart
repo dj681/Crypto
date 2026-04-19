@@ -13,55 +13,80 @@ class MarketService {
   static final Uri _exchangeInfoUri =
       Uri.parse('https://api.binance.com/api/v3/exchangeInfo');
 
+  // Cache the symbol→(base,quote) map: exchangeInfo is ~3 MB and rarely changes.
+  // This service runs only on the main Flutter isolate, so no synchronization needed.
+  Map<String, ({String base, String quote})>? _symbolCache;
+
   Future<List<MarketTicker>> fetchBinanceMarket({
     int? limit,
     String? quoteAsset = 'USDT',
   }) async {
-    final responses = await Future.wait([
-      _httpClient
-          .get(_tickerUri)
-          .timeout(const Duration(seconds: 20))
-          .catchError((Object e) => throw StateError('Erreur réseau Binance ticker.')),
-      _httpClient
-          .get(_exchangeInfoUri)
-          .timeout(const Duration(seconds: 20))
-          .catchError(
-              (Object e) => throw StateError('Erreur réseau Binance exchangeInfo.')),
-    ]);
+    // Fetch ticker data; only fetch exchangeInfo when the cache is empty.
+    final List<http.Response> responses;
+    if (_symbolCache == null) {
+      responses = await Future.wait([
+        _httpClient
+            .get(_tickerUri)
+            .timeout(const Duration(seconds: 20))
+            .catchError((Object e) => throw StateError('Erreur réseau Binance ticker.')),
+        _httpClient
+            .get(_exchangeInfoUri)
+            .timeout(const Duration(seconds: 20))
+            .catchError(
+                (Object e) => throw StateError('Erreur réseau Binance exchangeInfo.')),
+      ]);
+    } else {
+      responses = [
+        await _httpClient
+            .get(_tickerUri)
+            .timeout(const Duration(seconds: 20))
+            .catchError((Object e) => throw StateError('Erreur réseau Binance ticker.')),
+      ];
+    }
 
     final tickersResponse = responses[0];
-    final exchangeInfoResponse = responses[1];
 
     if (tickersResponse.statusCode != 200) {
       throw StateError('Erreur Binance ticker (${tickersResponse.statusCode})');
     }
-    if (exchangeInfoResponse.statusCode != 200) {
-      throw StateError('Erreur Binance exchangeInfo (${exchangeInfoResponse.statusCode})');
+
+    // Build or reuse the symbol cache.
+    if (_symbolCache == null) {
+      final exchangeInfoResponse = responses[1];
+      if (exchangeInfoResponse.statusCode != 200) {
+        throw StateError(
+            'Erreur Binance exchangeInfo (${exchangeInfoResponse.statusCode})');
+      }
+
+      final decodedExchangeInfo = jsonDecode(exchangeInfoResponse.body);
+      if (decodedExchangeInfo is! Map<String, dynamic>) {
+        throw const FormatException('Réponse Binance exchangeInfo inattendue.');
+      }
+
+      final rawSymbols = decodedExchangeInfo['symbols'];
+      if (rawSymbols is! List) {
+        throw const FormatException('Liste des symboles Binance introuvable.');
+      }
+
+      final cache = <String, ({String base, String quote})>{};
+      for (final item in rawSymbols) {
+        if (item is! Map<String, dynamic>) continue;
+        final symbol = (item['symbol'] ?? '').toString().toUpperCase();
+        final baseAsset = (item['baseAsset'] ?? '').toString().toUpperCase();
+        final listedQuoteAsset = (item['quoteAsset'] ?? '').toString().toUpperCase();
+        if (symbol.isEmpty || baseAsset.isEmpty || listedQuoteAsset.isEmpty) continue;
+        cache[symbol] = (base: baseAsset, quote: listedQuoteAsset);
+      }
+      _symbolCache = cache;
     }
+
+    // At this point _symbolCache is guaranteed non-null:
+    // either it was already populated before this call, or the block above just set it.
+    final symbolToBaseQuote = _symbolCache!;
 
     final decodedTickers = jsonDecode(tickersResponse.body);
     if (decodedTickers is! List) {
       throw const FormatException('Réponse Binance ticker inattendue.');
-    }
-
-    final decodedExchangeInfo = jsonDecode(exchangeInfoResponse.body);
-    if (decodedExchangeInfo is! Map<String, dynamic>) {
-      throw const FormatException('Réponse Binance exchangeInfo inattendue.');
-    }
-
-    final rawSymbols = decodedExchangeInfo['symbols'];
-    if (rawSymbols is! List) {
-      throw const FormatException('Liste des symboles Binance introuvable.');
-    }
-
-    final symbolToBaseQuote = <String, ({String base, String quote})>{};
-    for (final item in rawSymbols) {
-      if (item is! Map<String, dynamic>) continue;
-      final symbol = (item['symbol'] ?? '').toString().toUpperCase();
-      final baseAsset = (item['baseAsset'] ?? '').toString().toUpperCase();
-      final listedQuoteAsset = (item['quoteAsset'] ?? '').toString().toUpperCase();
-      if (symbol.isEmpty || baseAsset.isEmpty || listedQuoteAsset.isEmpty) continue;
-      symbolToBaseQuote[symbol] = (base: baseAsset, quote: listedQuoteAsset);
     }
 
     final normalizedQuoteAsset = quoteAsset?.trim().toUpperCase();
