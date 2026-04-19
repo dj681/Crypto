@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web3dart/web3dart.dart';
 
@@ -111,8 +112,10 @@ class WalletService {
           final credentials = EthPrivateKey.fromHex(privateKeyHex);
           address = credentials.address.hexEip55;
           await _storage.write(key: _Keys.address, value: address);
-        } catch (_) {
-          // Ignore invalid legacy key material and continue fallback checks.
+        } catch (e, st) {
+          debugPrint(
+            'Wallet recovery from private key failed, trying mnemonic fallback: $e\n$st',
+          );
         }
       }
     }
@@ -129,8 +132,10 @@ class WalletService {
             _storage.write(key: _Keys.privateKey, value: privateKeyHex),
             _storage.write(key: _Keys.address, value: address),
           ]);
-        } catch (_) {
-          // If recovery fails, treat as no wallet.
+        } catch (e, st) {
+          debugPrint(
+            'Wallet recovery from mnemonic failed: $e\n$st',
+          );
         }
       }
     }
