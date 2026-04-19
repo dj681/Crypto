@@ -37,8 +37,12 @@ class BlockchainProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _balance = await _blockchain.getBalance(address);
-      _gasPrice = await _blockchain.getGasPrice();
+      final results = await Future.wait([
+        _blockchain.getBalance(address),
+        _blockchain.getGasPrice(),
+      ]);
+      _balance = results[0];
+      _gasPrice = results[1];
       _status = BlockchainStatus.ready;
     } catch (e) {
       _error = 'Impossible de récupérer le solde : $e';

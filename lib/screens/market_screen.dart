@@ -50,7 +50,9 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final marketProvider = context.read<MarketProvider>();
-      if (marketProvider.isLoading) return;
+      // Skip auto-refresh if data is already loaded or a fetch is in progress.
+      // Users can still trigger a manual refresh via pull-to-refresh.
+      if (marketProvider.isLoading || marketProvider.tickers.isNotEmpty) return;
       marketProvider.refreshMarket();
     });
   }
@@ -71,7 +73,7 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
   Widget build(BuildContext context) {
     final marketProvider = context.watch<MarketProvider>();
     final query = _query.trim().toUpperCase();
-    final tickers = query.isEmpty
+    final List<MarketTicker> tickers = query.isEmpty
         ? marketProvider.tickers
         : marketProvider.tickers
             .where((ticker) =>
@@ -80,66 +82,97 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
                 ticker.quoteAsset.contains(query))
             .toList(growable: false);
 
+    final bool showList = !marketProvider.isLoading &&
+        marketProvider.status != MarketStatus.error &&
+        tickers.isNotEmpty;
+
     return RefreshIndicator(
       onRefresh: marketProvider.refreshMarket,
-      child: ListView(
-        padding: widget.contentPadding,
-        children: [
-          if (widget.showIntroText) ...[
-            const Text(
-              'Marché spot Binance. Toutes les paires disponibles sont listées ci-dessous.',
-            ),
-            const SizedBox(height: 16),
-          ],
-          TextField(
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: () => setState(() => _query = ''),
-                      icon: const Icon(Icons.close),
-                      tooltip: 'Effacer',
+      child: CustomScrollView(
+        slivers: [
+          // Header: intro text, search field, status/count.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: widget.contentPadding.copyWith(bottom: 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (widget.showIntroText) ...[
+                    const Text(
+                      'Marché spot Binance. Toutes les paires disponibles sont listées ci-dessous.',
                     ),
-              hintText: 'Rechercher une crypto (ex: BTC, ETH, USDT)',
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (value) => setState(() => _query = value),
-          ),
-          const SizedBox(height: 12),
-          if (marketProvider.isLoading && marketProvider.tickers.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 48),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (marketProvider.status == MarketStatus.error)
-            Card(
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  marketProvider.error ?? 'Erreur de chargement.',
-                  style:
-                      TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-                ),
+                    const SizedBox(height: 16),
+                  ],
+                  TextField(
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () => setState(() => _query = ''),
+                              icon: const Icon(Icons.close),
+                              tooltip: 'Effacer',
+                            ),
+                      hintText: 'Rechercher une crypto (ex: BTC, ETH, USDT)',
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  const SizedBox(height: 12),
+                  if (marketProvider.isLoading && marketProvider.tickers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 48),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (marketProvider.status == MarketStatus.error)
+                    Card(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          marketProvider.error ?? 'Erreur de chargement.',
+                          style: TextStyle(
+                              color:
+                                  Theme.of(context).colorScheme.onErrorContainer),
+                        ),
+                      ),
+                    )
+                  else if (!showList)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 48),
+                      child: Center(
+                          child: Text('Aucune donnée de marché disponible.')),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text('${tickers.length} paires affichées'),
+                    ),
+                ],
               ),
-            )
-          else if (tickers.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 48),
-              child: Center(child: Text('Aucune donnée de marché disponible.')),
-            )
-          else ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text('${tickers.length} paires affichées'),
             ),
-            ...tickers.map((ticker) => _MarketTickerCard(
-                  ticker: ticker,
-                  onBuy: () => _openBinanceTrade(ticker, isBuy: true),
-                  onSell: () => _openBinanceTrade(ticker, isBuy: false),
-                )),
-          ],
+          ),
+          // Ticker list: lazily rendered with SliverList.builder.
+          if (showList)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                widget.contentPadding.left,
+                0,
+                widget.contentPadding.right,
+                widget.contentPadding.bottom,
+              ),
+              sliver: SliverList.builder(
+                itemCount: tickers.length,
+                itemBuilder: (context, index) {
+                  final ticker = tickers[index];
+                  return _MarketTickerCard(
+                    ticker: ticker,
+                    onBuy: () => _openBinanceTrade(ticker, isBuy: true),
+                    onSell: () => _openBinanceTrade(ticker, isBuy: false),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
