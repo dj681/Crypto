@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:my_crypto_safe/models/tx_record.dart';
 import 'package:my_crypto_safe/services/wallet_service.dart';
@@ -7,6 +8,11 @@ import 'package:my_crypto_safe/services/wallet_service.dart';
 // In-memory stub for FlutterSecureStorage.
 class _FakeSecureStorage extends Fake implements FlutterSecureStorage {
   final _store = <String, String>{};
+
+  @visibleForTesting
+  void removeKey(String key) => _store.remove(key);
+  @visibleForTesting
+  String? getValue(String key) => _store[key];
 
   @override
   Future<void> write({
@@ -151,6 +157,38 @@ void main() {
       final loaded = await service.loadWallet();
       expect(loaded, isNotNull);
       expect(loaded!.address, startsWith('0x'));
+    });
+
+    test('recovers wallet when address key is missing but private key exists',
+        () async {
+      const mnemonic =
+          'abandon abandon abandon abandon abandon abandon '
+          'abandon abandon abandon abandon abandon about';
+      await service.createWallet(mnemonic);
+      storage.removeKey('wallet_address');
+
+      final loaded = await service.loadWallet();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.address, startsWith('0x'));
+      expect(storage.getValue('wallet_address'), isNotEmpty);
+    });
+
+    test('recovers wallet from mnemonic when address and private key are missing',
+        () async {
+      const mnemonic =
+          'abandon abandon abandon abandon abandon abandon '
+          'abandon abandon abandon abandon abandon about';
+      await service.createWallet(mnemonic);
+      storage.removeKey('wallet_address');
+      storage.removeKey('wallet_private_key');
+
+      final loaded = await service.loadWallet();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.address, startsWith('0x'));
+      expect(storage.getValue('wallet_address'), isNotEmpty);
+      expect(storage.getValue('wallet_private_key'), isNotEmpty);
     });
   });
 

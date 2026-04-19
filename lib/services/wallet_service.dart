@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web3dart/web3dart.dart';
 
@@ -26,6 +27,8 @@ class _Keys {
 /// HD path (m/44'/60'/0'/0/0) can be added later with a dedicated BIP-32
 /// library.
 class WalletService {
+  static const int _privateKeyByteLength = 32;
+
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
 
@@ -36,9 +39,15 @@ class WalletService {
   static String _bytesToHex(Uint8List bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
+  static Uint8List _privateKeyBytesFromSeed(Uint8List seed) =>
+      seed.sublist(0, _privateKeyByteLength);
+
+  static String _privateKeyHexFromSeed(Uint8List seed) =>
+      _bytesToHex(_privateKeyBytesFromSeed(seed));
+
   static EthPrivateKey _credentialsFromSeed(Uint8List seed) {
     // Use the first 32 bytes of the 64-byte seed as private key.
-    final privateKeyBytes = seed.sublist(0, 32);
+    final privateKeyBytes = _privateKeyBytesFromSeed(seed);
     return EthPrivateKey(privateKeyBytes);
   }
 
@@ -72,9 +81,9 @@ class WalletService {
 
   Future<WalletModel> _deriveAndPersist(String mnemonic) async {
     final seed = bip39.mnemonicToSeed(mnemonic);
-    final credentials = _credentialsFromSeed(seed);
+    final privateKeyHex = _privateKeyHexFromSeed(seed);
+    final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
-    final privateKeyHex = _bytesToHex(seed.sublist(0, 32));
 
     await Future.wait([
       _storage.write(key: _Keys.mnemonic, value: mnemonic),
@@ -95,8 +104,51 @@ class WalletService {
 
   /// Returns [WalletModel] if a wallet is stored, or null otherwise.
   Future<WalletModel?> loadWallet() async {
-    final address = await _storage.read(key: _Keys.address);
-    if (address == null) return null;
+    var address = await _storage.read(key: _Keys.address);
+
+    // Backward compatibility / recovery:
+    // if address is missing but private key or mnemonic still exists, rebuild it.
+    if (address == null || address.isEmpty) {
+      final privateKeyHex = await _storage.read(key: _Keys.privateKey);
+      if (privateKeyHex != null && privateKeyHex.isNotEmpty) {
+        try {
+          final credentials = EthPrivateKey.fromHex(privateKeyHex);
+          address = credentials.address.hexEip55;
+          await _storage.write(key: _Keys.address, value: address);
+        } catch (e, st) {
+          debugPrint(
+            'Wallet recovery from private key failed, trying mnemonic fallback: $e\n$st',
+          );
+        }
+      }
+    }
+
+    if (address == null || address.isEmpty) {
+      final mnemonic = await _storage.read(key: _Keys.mnemonic);
+      if (mnemonic != null &&
+          mnemonic.isNotEmpty &&
+          validateMnemonic(mnemonic)) {
+        try {
+          final seed = bip39.mnemonicToSeed(mnemonic);
+          final privateKeyHex = _privateKeyHexFromSeed(seed);
+          final credentials = EthPrivateKey.fromHex(privateKeyHex);
+          address = credentials.address.hexEip55;
+          await Future.wait([
+            _storage.write(key: _Keys.privateKey, value: privateKeyHex),
+            _storage.write(key: _Keys.address, value: address),
+          ]);
+        } catch (e, st) {
+          debugPrint(
+            'Wallet recovery from mnemonic failed: $e\n$st',
+          );
+        }
+      } else if (mnemonic != null && mnemonic.isNotEmpty) {
+        debugPrint('Wallet recovery skipped: stored mnemonic is invalid.');
+      }
+    }
+
+    if (address == null || address.isEmpty) return null;
+
     final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
     final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
     return WalletModel(
