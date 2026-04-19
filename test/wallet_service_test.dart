@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:my_crypto_safe/models/tx_record.dart';
 import 'package:my_crypto_safe/services/wallet_service.dart';
@@ -8,7 +9,9 @@ import 'package:my_crypto_safe/services/wallet_service.dart';
 class _FakeSecureStorage extends Fake implements FlutterSecureStorage {
   final _store = <String, String>{};
 
+  @visibleForTesting
   void removeKey(String key) => _store.remove(key);
+  @visibleForTesting
   String? getValue(String key) => _store[key];
 
   @override

@@ -27,6 +27,8 @@ class _Keys {
 /// HD path (m/44'/60'/0'/0/0) can be added later with a dedicated BIP-32
 /// library.
 class WalletService {
+  static const int _privateKeyByteLength = 32;
+
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
 
@@ -37,7 +39,8 @@ class WalletService {
   static String _bytesToHex(Uint8List bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
-  static Uint8List _privateKeyBytesFromSeed(Uint8List seed) => seed.sublist(0, 32);
+  static Uint8List _privateKeyBytesFromSeed(Uint8List seed) =>
+      seed.sublist(0, _privateKeyByteLength);
 
   static String _privateKeyHexFromSeed(Uint8List seed) =>
       _bytesToHex(_privateKeyBytesFromSeed(seed));
@@ -122,7 +125,9 @@ class WalletService {
 
     if (address == null || address.isEmpty) {
       final mnemonic = await _storage.read(key: _Keys.mnemonic);
-      if (mnemonic != null && mnemonic.isNotEmpty && validateMnemonic(mnemonic)) {
+      if (mnemonic != null &&
+          mnemonic.isNotEmpty &&
+          validateMnemonic(mnemonic)) {
         try {
           final seed = bip39.mnemonicToSeed(mnemonic);
           final privateKeyHex = _privateKeyHexFromSeed(seed);
@@ -137,6 +142,8 @@ class WalletService {
             'Wallet recovery from mnemonic failed: $e\n$st',
           );
         }
+      } else if (mnemonic != null && mnemonic.isNotEmpty) {
+        debugPrint('Wallet recovery skipped: stored mnemonic is invalid.');
       }
     }
 
