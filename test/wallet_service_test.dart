@@ -8,6 +8,9 @@ import 'package:my_crypto_safe/services/wallet_service.dart';
 class _FakeSecureStorage extends Fake implements FlutterSecureStorage {
   final _store = <String, String>{};
 
+  void removeKey(String key) => _store.remove(key);
+  String? getValue(String key) => _store[key];
+
   @override
   Future<void> write({
     required String key,
@@ -159,13 +162,13 @@ void main() {
           'abandon abandon abandon abandon abandon abandon '
           'abandon abandon abandon abandon abandon about';
       await service.createWallet(mnemonic);
-      storage._store.remove('wallet_address');
+      storage.removeKey('wallet_address');
 
       final loaded = await service.loadWallet();
 
       expect(loaded, isNotNull);
       expect(loaded!.address, startsWith('0x'));
-      expect(storage._store['wallet_address'], isNotEmpty);
+      expect(storage.getValue('wallet_address'), isNotEmpty);
     });
 
     test('recovers wallet from mnemonic when address and private key are missing',
@@ -174,15 +177,15 @@ void main() {
           'abandon abandon abandon abandon abandon abandon '
           'abandon abandon abandon abandon abandon about';
       await service.createWallet(mnemonic);
-      storage._store.remove('wallet_address');
-      storage._store.remove('wallet_private_key');
+      storage.removeKey('wallet_address');
+      storage.removeKey('wallet_private_key');
 
       final loaded = await service.loadWallet();
 
       expect(loaded, isNotNull);
       expect(loaded!.address, startsWith('0x'));
-      expect(storage._store['wallet_address'], isNotEmpty);
-      expect(storage._store['wallet_private_key'], isNotEmpty);
+      expect(storage.getValue('wallet_address'), isNotEmpty);
+      expect(storage.getValue('wallet_private_key'), isNotEmpty);
     });
   });
 

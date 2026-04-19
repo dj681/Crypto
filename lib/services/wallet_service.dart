@@ -36,9 +36,14 @@ class WalletService {
   static String _bytesToHex(Uint8List bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
+  static Uint8List _privateKeyBytesFromSeed(Uint8List seed) => seed.sublist(0, 32);
+
+  static String _privateKeyHexFromSeed(Uint8List seed) =>
+      _bytesToHex(_privateKeyBytesFromSeed(seed));
+
   static EthPrivateKey _credentialsFromSeed(Uint8List seed) {
     // Use the first 32 bytes of the 64-byte seed as private key.
-    final privateKeyBytes = seed.sublist(0, 32);
+    final privateKeyBytes = _privateKeyBytesFromSeed(seed);
     return EthPrivateKey(privateKeyBytes);
   }
 
@@ -72,9 +77,9 @@ class WalletService {
 
   Future<WalletModel> _deriveAndPersist(String mnemonic) async {
     final seed = bip39.mnemonicToSeed(mnemonic);
-    final credentials = _credentialsFromSeed(seed);
+    final privateKeyHex = _privateKeyHexFromSeed(seed);
+    final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
-    final privateKeyHex = _bytesToHex(seed.sublist(0, 32));
 
     await Future.wait([
       _storage.write(key: _Keys.mnemonic, value: mnemonic),
@@ -117,8 +122,8 @@ class WalletService {
       if (mnemonic != null && mnemonic.isNotEmpty && validateMnemonic(mnemonic)) {
         try {
           final seed = bip39.mnemonicToSeed(mnemonic);
-          final credentials = _credentialsFromSeed(seed);
-          final privateKeyHex = _bytesToHex(seed.sublist(0, 32));
+          final privateKeyHex = _privateKeyHexFromSeed(seed);
+          final credentials = EthPrivateKey.fromHex(privateKeyHex);
           address = credentials.address.hexEip55;
           await Future.wait([
             _storage.write(key: _Keys.privateKey, value: privateKeyHex),
