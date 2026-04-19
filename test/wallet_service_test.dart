@@ -152,6 +152,38 @@ void main() {
       expect(loaded, isNotNull);
       expect(loaded!.address, startsWith('0x'));
     });
+
+    test('recovers wallet when address key is missing but private key exists',
+        () async {
+      const mnemonic =
+          'abandon abandon abandon abandon abandon abandon '
+          'abandon abandon abandon abandon abandon about';
+      await service.createWallet(mnemonic);
+      storage._store.remove('wallet_address');
+
+      final loaded = await service.loadWallet();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.address, startsWith('0x'));
+      expect(storage._store['wallet_address'], isNotEmpty);
+    });
+
+    test('recovers wallet from mnemonic when address and private key are missing',
+        () async {
+      const mnemonic =
+          'abandon abandon abandon abandon abandon abandon '
+          'abandon abandon abandon abandon abandon about';
+      await service.createWallet(mnemonic);
+      storage._store.remove('wallet_address');
+      storage._store.remove('wallet_private_key');
+
+      final loaded = await service.loadWallet();
+
+      expect(loaded, isNotNull);
+      expect(loaded!.address, startsWith('0x'));
+      expect(storage._store['wallet_address'], isNotEmpty);
+      expect(storage._store['wallet_private_key'], isNotEmpty);
+    });
   });
 
   group('WalletService - clearWallet', () {

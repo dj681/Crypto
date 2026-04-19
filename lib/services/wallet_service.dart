@@ -95,8 +95,43 @@ class WalletService {
 
   /// Returns [WalletModel] if a wallet is stored, or null otherwise.
   Future<WalletModel?> loadWallet() async {
-    final address = await _storage.read(key: _Keys.address);
-    if (address == null) return null;
+    var address = await _storage.read(key: _Keys.address);
+
+    // Backward compatibility / recovery:
+    // if address is missing but private key or mnemonic still exists, rebuild it.
+    if (address == null || address.isEmpty) {
+      final privateKeyHex = await _storage.read(key: _Keys.privateKey);
+      if (privateKeyHex != null && privateKeyHex.isNotEmpty) {
+        try {
+          final credentials = EthPrivateKey.fromHex(privateKeyHex);
+          address = credentials.address.hexEip55;
+          await _storage.write(key: _Keys.address, value: address);
+        } catch (_) {
+          // Ignore invalid legacy key material and continue fallback checks.
+        }
+      }
+    }
+
+    if (address == null || address.isEmpty) {
+      final mnemonic = await _storage.read(key: _Keys.mnemonic);
+      if (mnemonic != null && mnemonic.isNotEmpty && validateMnemonic(mnemonic)) {
+        try {
+          final seed = bip39.mnemonicToSeed(mnemonic);
+          final credentials = _credentialsFromSeed(seed);
+          final privateKeyHex = _bytesToHex(seed.sublist(0, 32));
+          address = credentials.address.hexEip55;
+          await Future.wait([
+            _storage.write(key: _Keys.privateKey, value: privateKeyHex),
+            _storage.write(key: _Keys.address, value: address),
+          ]);
+        } catch (_) {
+          // If recovery fails, treat as no wallet.
+        }
+      }
+    }
+
+    if (address == null || address.isEmpty) return null;
+
     final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
     final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
     return WalletModel(
