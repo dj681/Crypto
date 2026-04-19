@@ -106,7 +106,7 @@ test/
   les routes Flutter continuent de fonctionner après rechargement de page.
 - Le bouton **Progressive Web App** de l’onboarding lit l’URL via
   `--dart-define=PWA_URL=...` (fallback par défaut :
-  `https://dj681.github.io/Crypto/`).
+  `https://dj681-crypto.netlify.app/`).
 
 ## Configuration Android requise
 

@@ -8,7 +8,7 @@ class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   static const String routeName = '/onboarding';
-  static const String _defaultPwaUrl = 'https://dj681.github.io/Crypto/';
+  static const String _defaultPwaUrl = 'https://dj681-crypto.netlify.app/';
   static final Uri _pwaUri = _resolvePwaUri();
 
   static Uri _resolvePwaUri() {
