@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'wallet_create_screen.dart';
@@ -18,13 +19,28 @@ class OnboardingScreen extends StatelessWidget {
     );
     final normalized = configured.trim();
     if (normalized.isEmpty) {
-      return Uri.parse(_defaultPwaUrl);
+      return _defaultUriForPlatform();
     }
     final parsed = Uri.tryParse(normalized);
-    if (parsed == null || !parsed.hasScheme || !parsed.hasAuthority) {
-      return Uri.parse(_defaultPwaUrl);
+    if (parsed == null ||
+        !parsed.hasScheme ||
+        !parsed.hasAuthority ||
+        (parsed.scheme != 'http' && parsed.scheme != 'https')) {
+      return _defaultUriForPlatform();
     }
     return parsed;
+  }
+
+  static Uri _defaultUriForPlatform() {
+    if (kIsWeb) {
+      return Uri(
+        scheme: Uri.base.scheme,
+        host: Uri.base.host,
+        port: Uri.base.hasPort ? Uri.base.port : null,
+        path: '/',
+      );
+    }
+    return Uri.parse(_defaultPwaUrl);
   }
 
   Future<void> _openExternalLink(BuildContext context, Uri uri) async {
