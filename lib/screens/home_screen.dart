@@ -26,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _marketViewBottomPadding = kBottomNavigationBarHeight + 24;
+  // Snackbar timing tuned for short-to-medium French action messages.
   static const _minSnackbarSeconds = 4;
   static const _maxSnackbarSeconds = 8;
   static const _snackbarCharsPerSecond = 20;
@@ -93,9 +94,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openHistoryAsync() async {
     try {
       await Navigator.pushNamed(context, HistoryScreen.routeName);
-    } catch (error) {
+    } on Exception catch (error) {
       debugPrint('Navigation to history failed: $error');
-      _showActionMessage('Impossible d\'ouvrir l\'historique pour le moment.');
+      _showActionMessage("Impossible d'ouvrir l'historique pour le moment.");
     }
   }
 
