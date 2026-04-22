@@ -66,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen> {
         'Splash init failed with unexpected error: $e\n$st',
       );
       if (!mounted) return;
-      setState(() => _loadError = 'Erreur inattendue : $e');
+      setState(() => _loadError = 'Erreur inattendue. Veuillez réessayer.');
     }
   }
 

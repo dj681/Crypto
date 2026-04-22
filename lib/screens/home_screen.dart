@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.wifi_off_outlined,
+              Icons.error_outline,
               size: 64,
               color: Theme.of(context).colorScheme.error,
             ),

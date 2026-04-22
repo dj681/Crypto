@@ -20,7 +20,7 @@ class MarketService {
     final response = await _httpClient
         .get(_marketsUri(perPage: perPage))
         .timeout(const Duration(seconds: 20))
-        .catchError((Object e) => throw StateError('Erreur réseau marché crypto.'));
+        .catchError((Object e) => throw StateError('Erreur réseau marché crypto : $e'));
 
     if (response.statusCode != 200) {
       throw StateError('Erreur API marché (${response.statusCode})');
