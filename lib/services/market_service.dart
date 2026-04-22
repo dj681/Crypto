@@ -9,13 +9,39 @@ class MarketService {
 
   final http.Client _httpClient;
 
-  static final Uri _tickerUri = Uri.parse('https://api.binance.com/api/v3/ticker/24hr');
-  static final Uri _exchangeInfoUri =
-      Uri.parse('https://api.binance.com/api/v3/exchangeInfo');
+  static const String _backendBaseUrl =
+      String.fromEnvironment('BACKEND_URL', defaultValue: '');
+  static final Uri _tickerUri = _resolveApiUri(
+    backendPath: '/api/binance/ticker24h',
+    fallbackUrl: 'https://api.binance.com/api/v3/ticker/24hr',
+  );
+  static final Uri _exchangeInfoUri = _resolveApiUri(
+    backendPath: '/api/binance/exchangeInfo',
+    fallbackUrl: 'https://api.binance.com/api/v3/exchangeInfo',
+  );
 
   // Cache the symbol→(base,quote) map: exchangeInfo is ~3 MB and rarely changes.
   // This service runs only on the main Flutter isolate, so no synchronization needed.
   Map<String, ({String base, String quote})>? _symbolCache;
+
+  static Uri _resolveApiUri({
+    required String backendPath,
+    required String fallbackUrl,
+  }) {
+    final backend = _backendBaseUrl.trim();
+    if (backend.isEmpty) return Uri.parse(fallbackUrl);
+    final parsed = Uri.tryParse(backend);
+    if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) {
+      return Uri.parse(fallbackUrl);
+    }
+    final basePath = parsed.path.endsWith('/')
+        ? parsed.path.substring(0, parsed.path.length - 1)
+        : parsed.path;
+    return parsed.replace(
+      path: '$basePath$backendPath',
+      queryParameters: null,
+    );
+  }
 
   Future<List<MarketTicker>> fetchBinanceMarket({
     int? limit,
