@@ -113,7 +113,7 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
                      child: Text(
                        'Notez ces 4 mots dans l\'ordre et conservez-les en lieu sûr. '
                        'Ils sont la seule façon de récupérer votre portefeuille. '
-                       'Une sauvegarde réduite à 2 mots n\'est pas suffisamment sûre.',
+                       'Vous devez conserver les 4 mots complets.',
                        style: TextStyle(
                          color: Theme.of(context).colorScheme.onErrorContainer,
                        ),

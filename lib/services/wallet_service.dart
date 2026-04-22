@@ -33,7 +33,7 @@ class WalletService {
   static const int _privateKeyByteLength = 32;
   static const int _recoveryWordCount = 4;
   // Slows offline brute force on short 4-word phrases while keeping UX acceptable.
-  static const int _recoveryPbkdf2Iterations = 120000;
+  static const int _recoveryPbkdf2Iterations = 210000;
   // Must stay deterministic to recover a wallet from phrase only (no extra metadata).
   static const String _recoveryPbkdf2Salt = 'my-crypto-safe-recovery-v1';
   static final Set<String> _bip39WordSet =
