@@ -63,7 +63,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 4),
+        ),
+      );
   }
 
   void _openTraderWithMessage(String message) {
@@ -155,10 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onOpenRates: () => _openTraderWithMessage(
                     'Consultez maintenant les taux en temps réel.',
                   ),
-                  onOpenConvertHistory: () => Navigator.pushNamed(
-                    context,
-                    HistoryScreen.routeName,
-                  ),
+                  onOpenConvertHistory: _openHistory,
                 ),
               ],
             ),
@@ -590,3 +592,8 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
+  void _openHistory() {
+    Navigator.pushNamed(context, HistoryScreen.routeName).catchError((_) {
+      _showActionMessage('Impossible d’ouvrir l’historique pour le moment.');
+    });
+  }
