@@ -51,7 +51,7 @@ bin/
 ### Gestion du portefeuille
 - Génération d'une phrase de récupération à 4 mots avec étape de confirmation obligatoire
 - Import par phrase mnémonique avec validation stricte
-- Dérivation déterministe de la clé privée Ethereum depuis la seed BIP-39
+- Dérivation déterministe de la clé privée Ethereum depuis la phrase de récupération (BIP-39 legacy ou PBKDF2-SHA512 pour 4 mots)
 - Stockage chiffré (FlutterSecureStorage : Keychain iOS / Keystore Android)
 
 ### Blockchain
@@ -163,8 +163,9 @@ Dans `android/app/build.gradle`, s'assurer que :
 
 ## Note sur la dérivation de clé
 
-La clé privée Ethereum est dérivée des 32 premiers octets de la seed BIP-39
-(64 octets). Cette dérivation est déterministe et reproductible depuis la phrase
-mnémonique, mais n'est pas conforme BIP-44. Une dérivation complète
+La clé privée Ethereum est dérivée des 32 premiers octets d'une seed de 64 octets.
+Pour les phrases BIP-39 legacy, cette seed vient de `mnemonicToSeed`.
+Pour les nouvelles phrases de 4 mots, la seed est dérivée via PBKDF2-HMAC-SHA512.
+Cette dérivation est déterministe et reproductible depuis la phrase, mais n'est pas conforme BIP-44. Une dérivation complète
 (chemin `m/44'/60'/0'/0/0`) peut être ajoutée ultérieurement avec une
 bibliothèque BIP-32 dédiée.

@@ -100,6 +100,11 @@ void main() {
       expect(service.validateMnemonic(knownMnemonic), isTrue);
     });
 
+    test('validateMnemonic rejects 4 words outside BIP-39 wordlist', () {
+      const invalidFourWords = 'alpha beta gamma delta';
+      expect(service.validateMnemonic(invalidFourWords), isFalse);
+    });
+
     test('validateMnemonic accepts a known BIP-39 test vector', () {
       const knownMnemonic =
           'abandon abandon abandon abandon abandon abandon '
