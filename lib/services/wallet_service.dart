@@ -3,7 +3,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
-import 'package:bip39/src/wordlists/english.dart' as bip39_wordlist;
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -37,8 +36,9 @@ class WalletService {
   static const int _recoveryPbkdf2Iterations = 2000000;
   // Deterministic salt prefix: recovery remains possible from phrase only.
   static const String _recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
-  static final Set<String> _bip39WordSet =
-      Set.unmodifiable(bip39_wordlist.WORDLIST.toSet());
+  static const String _wordProbeTail =
+      'abandon abandon abandon abandon abandon abandon '
+      'abandon abandon abandon abandon abandon';
 
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -67,11 +67,10 @@ class WalletService {
   /// Returns a fresh 4-word recovery phrase.
   String generateMnemonic() {
     final random = Random.secure();
+    final generatedWords = bip39.generateMnemonic().split(' ');
     final words = List.generate(
       _recoveryWordCount,
-      (_) => bip39_wordlist.WORDLIST[
-        random.nextInt(bip39_wordlist.WORDLIST.length),
-      ],
+      (_) => generatedWords[random.nextInt(generatedWords.length)],
     );
     return words.join(' ');
   }
@@ -85,7 +84,18 @@ class WalletService {
   bool _isFourWordRecoveryPhrase(String phrase) {
     final words = phrase.split(RegExp(r'\s+'));
     if (words.length != _recoveryWordCount) return false;
-    return words.every(_bip39WordSet.contains);
+    return words.every(_isBip39Word);
+  }
+
+  bool _isBip39Word(String word) {
+    try {
+      bip39.mnemonicToEntropy('$word $_wordProbeTail');
+      return true;
+    } on ArgumentError {
+      return false;
+    } catch (_) {
+      return true;
+    }
   }
 
   Uint8List _seedFromMnemonic(String mnemonic) {
