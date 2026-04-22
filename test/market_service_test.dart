@@ -6,7 +6,7 @@ import 'package:my_crypto_safe/services/market_service.dart';
 
 void main() {
   group('MarketService', () {
-    test('fetchBinanceMarket sorts by quoteVolume', () async {
+    test('fetchMarketData sorts by quoteVolume', () async {
       final mockClient = MockClient((request) async {
         expect(
           request.url.toString(),
@@ -31,7 +31,7 @@ void main() {
       expect(tickers.last.symbol, 'ETHUSD');
     });
 
-    test('fetchBinanceMarket throws when API status is not 200', () async {
+    test('fetchMarketData throws when API status is not 200', () async {
       final mockClient = MockClient((request) async {
         return http.Response('error', 500);
       });
@@ -43,7 +43,7 @@ void main() {
       );
     });
 
-    test('fetchBinanceMarket ignores rows with null or missing numeric values', () async {
+    test('fetchMarketData ignores rows with null or missing numeric values', () async {
       final mockClient = MockClient((request) async {
         return http.Response(
           '''

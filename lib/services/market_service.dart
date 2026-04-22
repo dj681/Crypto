@@ -15,12 +15,10 @@ class MarketService {
       'https://api.coingecko.com/api/v3/coins/markets'
       '?vs_currency=usd&order=market_cap_desc&per_page=$perPage&page=1');
 
-  Future<List<MarketTicker>> fetchBinanceMarket({
-    int? limit,
-    String? quoteAsset,
-  }) async {
+  Future<List<MarketTicker>> fetchBinanceMarket({int? limit}) async {
+    final perPage = (limit != null && limit > 0) ? limit.clamp(1, 250) : 250;
     final response = await _httpClient
-        .get(_marketsUri())
+        .get(_marketsUri(perPage: perPage))
         .timeout(const Duration(seconds: 20))
         .catchError((Object e) => throw StateError('Erreur réseau marché crypto.'));
 
@@ -60,9 +58,6 @@ class MarketService {
     }
 
     tickers.sort((a, b) => b.quoteVolume.compareTo(a.quoteVolume));
-    if (limit != null && limit > 0 && tickers.length > limit) {
-      return tickers.take(limit).toList(growable: false);
-    }
     return tickers;
   }
 }

@@ -24,7 +24,7 @@ class MarketProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _tickers = await _marketService.fetchBinanceMarket(quoteAsset: null);
+      _tickers = await _marketService.fetchBinanceMarket();
       _status = MarketStatus.ready;
     } catch (e) {
       _status = MarketStatus.error;
