@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -61,12 +63,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showActionMessage(String message) {
     if (!mounted) return;
+    final seconds = math.max(4, math.min(8, (message.length / 20).ceil()));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          duration: const Duration(seconds: 5),
+          duration: Duration(seconds: seconds),
         ),
       );
   }
@@ -76,10 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showActionMessage(message);
     });
-  }
-
-  void _openHistory() {
-    _openHistoryAsync();
   }
 
   Future<void> _openHistoryAsync() async {
@@ -173,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onOpenRates: () => _openTraderWithMessage(
                     'Consultez maintenant les taux en temps réel.',
                   ),
-                  onOpenConvertHistory: _openHistory,
+                  onOpenConvertHistory: () => _openHistoryAsync(),
                 ),
               ],
             ),
