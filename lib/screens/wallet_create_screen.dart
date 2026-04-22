@@ -159,7 +159,7 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
 
   Widget _buildConfirmStep() {
     final words = _mnemonic.trim().split(RegExp(r'\s+'));
-    const indices = [2, 0, 3, 1];
+    const indices = [0, 3];
     return _WordConfirmationStep(
       words: words,
       indices: indices,
