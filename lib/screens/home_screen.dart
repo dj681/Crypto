@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          duration: const Duration(seconds: 6),
+          duration: const Duration(seconds: 5),
         ),
       );
   }
@@ -79,10 +79,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openHistory() {
-    Navigator.pushNamed(context, HistoryScreen.routeName).catchError((error) {
+    _openHistoryAsync();
+  }
+
+  Future<void> _openHistoryAsync() async {
+    try {
+      await Navigator.pushNamed(context, HistoryScreen.routeName);
+    } catch (error) {
       debugPrint('Navigation to history failed: $error');
       _showActionMessage('Impossible d\'ouvrir l\'historique pour le moment.');
-    });
+    }
   }
 
   String _formatPrice(double value) {
