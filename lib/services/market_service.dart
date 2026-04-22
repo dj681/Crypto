@@ -9,110 +9,49 @@ class MarketService {
 
   final http.Client _httpClient;
 
-  static final Uri _tickerUri = Uri.parse('https://api.binance.com/api/v3/ticker/24hr');
-  static final Uri _exchangeInfoUri =
-      Uri.parse('https://api.binance.com/api/v3/exchangeInfo');
-
-  // Cache the symbol→(base,quote) map: exchangeInfo is ~3 MB and rarely changes.
-  // This service runs only on the main Flutter isolate, so no synchronization needed.
-  Map<String, ({String base, String quote})>? _symbolCache;
+  // CoinGecko public API supports CORS from browsers, unlike Binance.
+  static const String _quoteLabel = 'USD';
+  static Uri _marketsUri({int perPage = 250}) => Uri.parse(
+      'https://api.coingecko.com/api/v3/coins/markets'
+      '?vs_currency=usd&order=market_cap_desc&per_page=$perPage&page=1');
 
   Future<List<MarketTicker>> fetchBinanceMarket({
     int? limit,
-    String? quoteAsset = 'USDT',
+    String? quoteAsset,
   }) async {
-    // Fetch ticker data; only fetch exchangeInfo when the cache is empty.
-    final List<http.Response> responses;
-    if (_symbolCache == null) {
-      responses = await Future.wait([
-        _httpClient
-            .get(_tickerUri)
-            .timeout(const Duration(seconds: 20))
-            .catchError((Object e) => throw StateError('Erreur réseau Binance ticker.')),
-        _httpClient
-            .get(_exchangeInfoUri)
-            .timeout(const Duration(seconds: 20))
-            .catchError(
-                (Object e) => throw StateError('Erreur réseau Binance exchangeInfo.')),
-      ]);
-    } else {
-      responses = [
-        await _httpClient
-            .get(_tickerUri)
-            .timeout(const Duration(seconds: 20))
-            .catchError((Object e) => throw StateError('Erreur réseau Binance ticker.')),
-      ];
+    final response = await _httpClient
+        .get(_marketsUri())
+        .timeout(const Duration(seconds: 20))
+        .catchError((Object e) => throw StateError('Erreur réseau marché crypto.'));
+
+    if (response.statusCode != 200) {
+      throw StateError('Erreur API marché (${response.statusCode})');
     }
 
-    final tickersResponse = responses[0];
-
-    if (tickersResponse.statusCode != 200) {
-      throw StateError('Erreur Binance ticker (${tickersResponse.statusCode})');
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const FormatException('Réponse API marché inattendue.');
     }
 
-    // Build or reuse the symbol cache.
-    if (_symbolCache == null) {
-      final exchangeInfoResponse = responses[1];
-      if (exchangeInfoResponse.statusCode != 200) {
-        throw StateError(
-            'Erreur Binance exchangeInfo (${exchangeInfoResponse.statusCode})');
-      }
-
-      final decodedExchangeInfo = jsonDecode(exchangeInfoResponse.body);
-      if (decodedExchangeInfo is! Map<String, dynamic>) {
-        throw const FormatException('Réponse Binance exchangeInfo inattendue.');
-      }
-
-      final rawSymbols = decodedExchangeInfo['symbols'];
-      if (rawSymbols is! List) {
-        throw const FormatException('Liste des symboles Binance introuvable.');
-      }
-
-      final cache = <String, ({String base, String quote})>{};
-      for (final item in rawSymbols) {
-        if (item is! Map<String, dynamic>) continue;
-        final symbol = (item['symbol'] ?? '').toString().toUpperCase();
-        final baseAsset = (item['baseAsset'] ?? '').toString().toUpperCase();
-        final listedQuoteAsset = (item['quoteAsset'] ?? '').toString().toUpperCase();
-        if (symbol.isEmpty || baseAsset.isEmpty || listedQuoteAsset.isEmpty) continue;
-        cache[symbol] = (base: baseAsset, quote: listedQuoteAsset);
-      }
-      _symbolCache = cache;
-    }
-
-    // At this point _symbolCache is guaranteed non-null:
-    // either it was already populated before this call, or the block above just set it.
-    final symbolToBaseQuote = _symbolCache!;
-
-    final decodedTickers = jsonDecode(tickersResponse.body);
-    if (decodedTickers is! List) {
-      throw const FormatException('Réponse Binance ticker inattendue.');
-    }
-
-    final normalizedQuoteAsset = quoteAsset?.trim().toUpperCase();
     final tickers = <MarketTicker>[];
-    for (final item in decodedTickers) {
+    for (final item in decoded) {
       if (item is! Map<String, dynamic>) continue;
-      final symbol = (item['symbol'] ?? '').toString().toUpperCase();
-      final assets = symbolToBaseQuote[symbol];
-      if (assets == null) continue;
-      if (normalizedQuoteAsset != null && assets.quote != normalizedQuoteAsset) {
-        continue;
-      }
+      final baseAsset = (item['symbol'] ?? '').toString().toUpperCase();
+      if (baseAsset.isEmpty) continue;
 
-      final lastPrice = double.tryParse(item['lastPrice']?.toString() ?? '');
+      final lastPrice = (item['current_price'] as num?)?.toDouble();
       final priceChangePercent =
-          double.tryParse(item['priceChangePercent']?.toString() ?? '');
-      final quoteVolume = double.tryParse(item['quoteVolume']?.toString() ?? '');
+          (item['price_change_percentage_24h'] as num?)?.toDouble();
+      final quoteVolume = (item['total_volume'] as num?)?.toDouble();
       if (lastPrice == null || priceChangePercent == null || quoteVolume == null) {
         continue;
       }
 
       tickers.add(
         MarketTicker(
-          symbol: symbol,
-          baseAsset: assets.base,
-          quoteAsset: assets.quote,
+          symbol: '$baseAsset$_quoteLabel',
+          baseAsset: baseAsset,
+          quoteAsset: _quoteLabel,
           lastPrice: lastPrice,
           priceChangePercent: priceChangePercent,
           quoteVolume: quoteVolume,

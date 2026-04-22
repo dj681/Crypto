@@ -28,7 +28,7 @@ class MarketProvider extends ChangeNotifier {
       _status = MarketStatus.ready;
     } catch (e) {
       _status = MarketStatus.error;
-      _error = 'Impossible de charger le marché Binance : $e';
+      _error = 'Impossible de charger les données de marché : $e';
     }
     notifyListeners();
   }

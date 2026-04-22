@@ -18,7 +18,7 @@ class _MarketScreenState extends State<MarketScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Marché Binance')),
+      appBar: AppBar(title: const Text('Marché Crypto')),
       body: const BinanceMarketView(
         contentPadding: EdgeInsets.all(16),
         showIntroText: true,
@@ -99,7 +99,7 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
                 children: [
                   if (widget.showIntroText) ...[
                     const Text(
-                      'Marché spot Binance. Toutes les paires disponibles sont listées ci-dessous.',
+                      'Marché crypto (CoinGecko). Les principales cryptomonnaies sont listées ci-dessous.',
                     ),
                     const SizedBox(height: 16),
                   ],
