@@ -78,6 +78,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _openHistory() {
+    Navigator.pushNamed(context, HistoryScreen.routeName).catchError((_) {
+      _showActionMessage('Impossible d\'ouvrir l\'historique pour le moment.');
+    });
+  }
+
   String _formatPrice(double value) {
     final precision = value >= 1000
         ? 2
@@ -592,8 +598,3 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
-  void _openHistory() {
-    Navigator.pushNamed(context, HistoryScreen.routeName).catchError((_) {
-      _showActionMessage('Impossible d’ouvrir l’historique pour le moment.');
-    });
-  }
