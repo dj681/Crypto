@@ -23,6 +23,7 @@ class _LockScreenState extends State<LockScreen> {
 
   void _onPin(String pin) async {
     final ok = await context.read<SecurityProvider>().unlockWithPin(pin);
+    if (!mounted) return;
     if (ok) {
       _navigateHome();
     } else {
@@ -36,7 +37,8 @@ class _LockScreenState extends State<LockScreen> {
   Future<void> _onBiometric() async {
     setState(() => _bioLoading = true);
     final ok = await context.read<SecurityProvider>().unlockWithBiometrics();
-    if (mounted) setState(() => _bioLoading = false);
+    if (!mounted) return;
+    setState(() => _bioLoading = false);
     if (ok) _navigateHome();
   }
 

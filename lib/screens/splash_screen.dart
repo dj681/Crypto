@@ -19,6 +19,9 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  // Non-null when wallet loading failed and the user should be offered a retry.
+  String? _loadError;
+
   @override
   void initState() {
     super.initState();
@@ -26,6 +29,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
+    if (!mounted) return;
+    setState(() => _loadError = null);
     try {
       final walletProvider = context.read<WalletProvider>();
       final securityProvider = context.read<SecurityProvider>();
@@ -37,6 +42,14 @@ class _SplashScreenState extends State<SplashScreen> {
       ]);
 
       if (!mounted) return;
+
+      // If wallet loading itself reported an error, stay on the splash screen
+      // and let the user retry instead of sending them to Onboarding (which
+      // would be confusing for users who already have an account).
+      if (walletProvider.status == WalletStatus.error) {
+        setState(() => _loadError = walletProvider.error ?? 'Erreur de chargement du portefeuille.');
+        return;
+      }
 
       if (!walletProvider.hasWallet) {
         Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
@@ -50,15 +63,55 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     } catch (e, st) {
       debugPrint(
-        'Splash init failed with unexpected error - navigating to onboarding: $e\n$st',
+        'Splash init failed with unexpected error: $e\n$st',
       );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
+      setState(() => _loadError = 'Erreur inattendue : $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Impossible de charger le portefeuille',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _loadError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => unawaited(_init()),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Réessayer'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Center(
         child: Column(

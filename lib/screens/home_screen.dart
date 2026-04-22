@@ -59,6 +59,51 @@ class _HomeScreenState extends State<HomeScreen> {
     marketProvider.refreshMarket();
   }
 
+  Widget _buildNullWalletBody(BuildContext context, WalletProvider walletProvider) {
+    if (walletProvider.status == WalletStatus.loading ||
+        walletProvider.status == WalletStatus.idle) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    // Error state — show message and retry button.
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Impossible de charger le portefeuille',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            if (walletProvider.error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                walletProvider.error!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => walletProvider.loadWallet(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Réessayer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _formatPrice(double value) {
     final precision = value >= 1000
         ? 2
@@ -93,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: wallet == null
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildNullWalletBody(context, walletProvider)
           : IndexedStack(
               index: _selectedIndex,
               children: [

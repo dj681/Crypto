@@ -40,6 +40,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     switch (_step) {
       case _PinStep.enterCurrent:
         final ok = await context.read<SecurityProvider>().unlockWithPin(pin);
+        if (!mounted) return;
         if (ok) {
           setState(() {
             _step = _PinStep.enterNew;
