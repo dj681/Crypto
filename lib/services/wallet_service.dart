@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:bip39/src/wordlists/english.dart' as bip39_wordlist;
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -37,7 +38,7 @@ class WalletService {
   // Deterministic salt prefix: recovery remains possible from phrase only.
   static const String _recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
   static final Set<String> _bip39WordSet =
-      Set.unmodifiable(bip39.WORDLIST.toSet());
+      Set.unmodifiable(bip39_wordlist.WORDLIST.toSet());
 
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -68,7 +69,9 @@ class WalletService {
     final random = Random.secure();
     final words = List.generate(
       _recoveryWordCount,
-      (_) => bip39.WORDLIST[random.nextInt(bip39.WORDLIST.length)],
+      (_) => bip39_wordlist.WORDLIST[
+        random.nextInt(bip39_wordlist.WORDLIST.length),
+      ],
     );
     return words.join(' ');
   }
