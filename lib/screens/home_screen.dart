@@ -59,6 +59,20 @@ class _HomeScreenState extends State<HomeScreen> {
     marketProvider.refreshMarket();
   }
 
+  void _showActionMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openTraderWithMessage(String message) {
+    setState(() => _selectedIndex = 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showActionMessage(message);
+    });
+  }
+
   String _formatPrice(double value) {
     final precision = value >= 1000
         ? 2
@@ -112,9 +126,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       EdgeInsets.fromLTRB(16, 16, 16, _marketViewBottomPadding),
                   showIntroText: false,
                 ),
-                const _RewardsTab(),
-                const _DiscoverTab(),
-                const _ConvertTab(),
+                _RewardsTab(
+                  onOpenDailyMissions: () => _openTraderWithMessage(
+                    'Consultez le marché pour réaliser vos missions quotidiennes.',
+                  ),
+                  onOpenReferral: () => _showActionMessage(
+                    'Parrainage pris en compte. Fonctionnalité détaillée bientôt disponible.',
+                  ),
+                  onOpenCashback: () => _showActionMessage(
+                    'Vos récompenses cashback seront affichées ici prochainement.',
+                  ),
+                ),
+                _DiscoverTab(
+                  onOpenDapps: () => _showActionMessage(
+                    'Ouverture des DApps populaires en préparation.',
+                  ),
+                  onOpenTrends: () => _openTraderWithMessage(
+                    'Voici les tendances crypto en temps réel.',
+                  ),
+                  onOpenLearn: () => _showActionMessage(
+                    'La section apprentissage sera disponible bientôt.',
+                  ),
+                ),
+                _ConvertTab(
+                  onOpenInstantConvert: () => _openTraderWithMessage(
+                    'Accédez au marché pour convertir vos actifs.',
+                  ),
+                  onOpenRates: () => _openTraderWithMessage(
+                    'Consultez maintenant les taux en temps réel.',
+                  ),
+                  onOpenConvertHistory: () => Navigator.pushNamed(
+                    context,
+                    HistoryScreen.routeName,
+                  ),
+                ),
               ],
             ),
       bottomNavigationBar: NavigationBar(
@@ -370,27 +415,38 @@ class _AccueilTab extends StatelessWidget {
 }
 
 class _RewardsTab extends StatelessWidget {
-  const _RewardsTab();
+  const _RewardsTab({
+    required this.onOpenDailyMissions,
+    required this.onOpenReferral,
+    required this.onOpenCashback,
+  });
+
+  final VoidCallback onOpenDailyMissions;
+  final VoidCallback onOpenReferral;
+  final VoidCallback onOpenCashback;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: const [
+      children: [
         _FeatureCard(
           icon: Icons.task_alt_outlined,
           title: 'Missions quotidiennes',
           description: 'Complétez des actions simples pour gagner des récompenses.',
+          onTap: onOpenDailyMissions,
         ),
         _FeatureCard(
           icon: Icons.group_add_outlined,
           title: 'Parrainage',
           description: 'Invitez des amis et recevez des bonus en crypto.',
+          onTap: onOpenReferral,
         ),
         _FeatureCard(
           icon: Icons.account_balance_wallet_outlined,
           title: 'Cashback',
           description: 'Suivez vos gains et récompenses disponibles.',
+          onTap: onOpenCashback,
         ),
       ],
     );
@@ -398,27 +454,38 @@ class _RewardsTab extends StatelessWidget {
 }
 
 class _DiscoverTab extends StatelessWidget {
-  const _DiscoverTab();
+  const _DiscoverTab({
+    required this.onOpenDapps,
+    required this.onOpenTrends,
+    required this.onOpenLearn,
+  });
+
+  final VoidCallback onOpenDapps;
+  final VoidCallback onOpenTrends;
+  final VoidCallback onOpenLearn;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: const [
+      children: [
         _FeatureCard(
           icon: Icons.public_outlined,
           title: 'DApps populaires',
           description: 'Explorez les applications Web3 les plus utilisées.',
+          onTap: onOpenDapps,
         ),
         _FeatureCard(
           icon: Icons.auto_graph_outlined,
           title: 'Tendances crypto',
           description: 'Suivez les actifs en progression et les nouveautés.',
+          onTap: onOpenTrends,
         ),
         _FeatureCard(
           icon: Icons.school_outlined,
           title: 'Apprendre',
           description: 'Guides et ressources pour mieux comprendre la crypto.',
+          onTap: onOpenLearn,
         ),
       ],
     );
@@ -426,27 +493,38 @@ class _DiscoverTab extends StatelessWidget {
 }
 
 class _ConvertTab extends StatelessWidget {
-  const _ConvertTab();
+  const _ConvertTab({
+    required this.onOpenInstantConvert,
+    required this.onOpenRates,
+    required this.onOpenConvertHistory,
+  });
+
+  final VoidCallback onOpenInstantConvert;
+  final VoidCallback onOpenRates;
+  final VoidCallback onOpenConvertHistory;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: const [
+      children: [
         _FeatureCard(
           icon: Icons.swap_horiz_outlined,
           title: 'Conversion instantanée',
           description: 'Convertissez rapidement vos cryptos entre différentes paires.',
+          onTap: onOpenInstantConvert,
         ),
         _FeatureCard(
           icon: Icons.currency_exchange_outlined,
           title: 'Taux en temps réel',
           description: 'Consultez les taux du marché avant de confirmer la conversion.',
+          onTap: onOpenRates,
         ),
         _FeatureCard(
           icon: Icons.schedule_outlined,
           title: 'Historique de conversion',
           description: 'Retrouvez vos dernières opérations de conversion.',
+          onTap: onOpenConvertHistory,
         ),
       ],
     );
@@ -458,11 +536,13 @@ class _FeatureCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
+    required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String description;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -472,6 +552,8 @@ class _FeatureCard extends StatelessWidget {
         leading: Icon(icon),
         title: Text(title),
         subtitle: Text(description),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }
