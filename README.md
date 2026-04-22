@@ -49,7 +49,7 @@ bin/
 ## Fonctionnalités implémentées
 
 ### Gestion du portefeuille
-- Génération BIP-39 (12 mots) avec étape de confirmation obligatoire
+- Génération d'une phrase de récupération à 4 mots avec étape de confirmation obligatoire
 - Import par phrase mnémonique avec validation stricte
 - Dérivation déterministe de la clé privée Ethereum depuis la seed BIP-39
 - Stockage chiffré (FlutterSecureStorage : Keychain iOS / Keystore Android)

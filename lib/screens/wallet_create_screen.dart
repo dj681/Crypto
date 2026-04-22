@@ -111,9 +111,9 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                      child: Text(
-                       'Notez ces 12 mots dans l\'ordre et conservez-les en lieu sûr. '
+                       'Notez ces 4 mots dans l\'ordre et conservez-les en lieu sûr. '
                        'Ils sont la seule façon de récupérer votre portefeuille. '
-                       'Une sauvegarde réduite à 3 mots n\'est pas suffisamment sûre.',
+                       'Une sauvegarde réduite à 2 mots n\'est pas suffisamment sûre.',
                        style: TextStyle(
                          color: Theme.of(context).colorScheme.onErrorContainer,
                        ),
@@ -159,7 +159,7 @@ class _WalletCreateScreenState extends State<WalletCreateScreen> {
 
   Widget _buildConfirmStep() {
     final words = _mnemonic.trim().split(RegExp(r'\s+'));
-    const indices = [2, 6, 10];
+    const indices = [0, 2, 3];
     return _WordConfirmationStep(
       words: words,
       indices: indices,

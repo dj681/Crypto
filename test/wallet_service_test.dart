@@ -78,10 +78,10 @@ void main() {
   });
 
   group('WalletService - mnemonic', () {
-    test('generateMnemonic returns a 12-word phrase', () {
+    test('generateMnemonic returns a 4-word phrase', () {
       final mnemonic = service.generateMnemonic();
       final words = mnemonic.trim().split(RegExp(r'\s+'));
-      expect(words.length, 12);
+      expect(words.length, 4);
     });
 
     test('validateMnemonic returns true for a valid phrase', () {
@@ -95,6 +95,11 @@ void main() {
       expect(service.validateMnemonic('one two three'), isFalse);
     });
 
+    test('validateMnemonic accepts a valid 4-word phrase', () {
+      const knownMnemonic = 'abandon ability able about';
+      expect(service.validateMnemonic(knownMnemonic), isTrue);
+    });
+
     test('validateMnemonic accepts a known BIP-39 test vector', () {
       const knownMnemonic =
           'abandon abandon abandon abandon abandon abandon '
@@ -105,9 +110,7 @@ void main() {
 
   group('WalletService - createWallet', () {
     test('creates wallet and stores address', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       final wallet = await service.createWallet(mnemonic);
 
       expect(wallet.address, startsWith('0x'));
@@ -117,9 +120,7 @@ void main() {
     });
 
     test('same mnemonic always produces the same address', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       final w1 = await service.createWallet(mnemonic);
       final w2 = await service.createWallet(mnemonic);
       expect(w1.address, equals(w2.address));
@@ -128,9 +129,7 @@ void main() {
 
   group('WalletService - importWallet', () {
     test('imports a valid mnemonic successfully', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       final wallet = await service.importWallet(mnemonic);
       expect(wallet.address, startsWith('0x'));
     });
@@ -150,9 +149,7 @@ void main() {
     });
 
     test('returns the stored wallet after creation', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       await service.createWallet(mnemonic);
       final loaded = await service.loadWallet();
       expect(loaded, isNotNull);
@@ -161,9 +158,7 @@ void main() {
 
     test('recovers wallet when address key is missing but private key exists',
         () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       await service.createWallet(mnemonic);
       storage.removeKey('wallet_address');
 
@@ -176,9 +171,7 @@ void main() {
 
     test('recovers wallet from mnemonic when address and private key are missing',
         () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       await service.createWallet(mnemonic);
       storage.removeKey('wallet_address');
       storage.removeKey('wallet_private_key');
@@ -194,9 +187,7 @@ void main() {
 
   group('WalletService - clearWallet', () {
     test('removes all data from storage', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       await service.createWallet(mnemonic);
       await service.clearWallet();
       final wallet = await service.loadWallet();
@@ -211,9 +202,7 @@ void main() {
     });
 
     test('appendTransaction persists and can be loaded back', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       await service.createWallet(mnemonic);
 
       final record = TxRecord(
@@ -235,9 +224,7 @@ void main() {
     });
 
     test('appendTransaction inserts newest first', () async {
-      const mnemonic =
-          'abandon abandon abandon abandon abandon abandon '
-          'abandon abandon abandon abandon abandon about';
+      const mnemonic = 'abandon ability able about';
       await service.createWallet(mnemonic);
 
       final first = TxRecord(

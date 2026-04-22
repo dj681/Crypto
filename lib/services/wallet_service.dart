@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web3dart/web3dart.dart';
@@ -19,7 +20,7 @@ class _Keys {
   static const String txHistory = 'wallet_tx_history';
 }
 
-/// Handles BIP-39 wallet creation/import and all encrypted persistence.
+/// Handles wallet creation/import and all encrypted persistence.
 ///
 /// **Derivation note**: the Ethereum private key is derived from the first
 /// 32 bytes of the 64-byte BIP-39 seed.  This is deterministic and
@@ -28,6 +29,7 @@ class _Keys {
 /// library.
 class WalletService {
   static const int _privateKeyByteLength = 32;
+  static const int _recoveryWordCount = 4;
 
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -53,12 +55,32 @@ class WalletService {
 
   // ── mnemonic generation / validation ─────────────────────────────────────
 
-  /// Returns a fresh 12-word BIP-39 mnemonic (128-bit entropy).
-  String generateMnemonic() => bip39.generateMnemonic();
+  /// Returns a fresh 4-word recovery phrase.
+  String generateMnemonic() {
+    final words = bip39.generateMnemonic().trim().split(RegExp(r'\s+'));
+    return words.take(_recoveryWordCount).join(' ');
+  }
 
-  /// Returns true when [mnemonic] is a valid BIP-39 phrase.
-  bool validateMnemonic(String mnemonic) =>
-      bip39.validateMnemonic(mnemonic.trim().toLowerCase());
+  /// Returns true when [mnemonic] is a supported recovery phrase.
+  bool validateMnemonic(String mnemonic) {
+    final cleaned = mnemonic.trim().toLowerCase();
+    return bip39.validateMnemonic(cleaned) || _isFourWordRecoveryPhrase(cleaned);
+  }
+
+  bool _isFourWordRecoveryPhrase(String phrase) {
+    final words = phrase.split(RegExp(r'\s+'));
+    if (words.length != _recoveryWordCount) return false;
+    return words.every((word) => RegExp(r'^[a-z]+$').hasMatch(word));
+  }
+
+  Uint8List _seedFromMnemonic(String mnemonic) {
+    final cleaned = mnemonic.trim().toLowerCase();
+    if (bip39.validateMnemonic(cleaned)) {
+      return bip39.mnemonicToSeed(cleaned);
+    }
+    final digest = crypto.sha256.convert(utf8.encode(cleaned));
+    return Uint8List.fromList(digest.bytes);
+  }
 
   // ── wallet creation / import ──────────────────────────────────────────────
 
@@ -80,7 +102,7 @@ class WalletService {
   }
 
   Future<WalletModel> _deriveAndPersist(String mnemonic) async {
-    final seed = bip39.mnemonicToSeed(mnemonic);
+    final seed = _seedFromMnemonic(mnemonic);
     final privateKeyHex = _privateKeyHexFromSeed(seed);
     final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
@@ -129,7 +151,7 @@ class WalletService {
           mnemonic.isNotEmpty &&
           validateMnemonic(mnemonic)) {
         try {
-          final seed = bip39.mnemonicToSeed(mnemonic);
+          final seed = _seedFromMnemonic(mnemonic);
           final privateKeyHex = _privateKeyHexFromSeed(seed);
           final credentials = EthPrivateKey.fromHex(privateKeyHex);
           address = credentials.address.hexEip55;
