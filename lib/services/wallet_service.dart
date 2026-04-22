@@ -70,7 +70,7 @@ class WalletService {
     final words = List.generate(
       _recoveryWordCount,
       (_) => bip39_wordlist.bip39EnglishWordlist[
-        random.nextInt(bip39_wordlist.bip39EnglishWordlist.length),
+        random.nextInt(bip39_wordlist.bip39EnglishWordlist.length)
       ],
     );
     return words.join(' ');
