@@ -26,6 +26,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _marketViewBottomPadding = kBottomNavigationBarHeight + 24;
+  static const _minSnackbarSeconds = 4;
+  static const _maxSnackbarSeconds = 8;
+  static const _snackbarCharsPerSecond = 20;
 
   static const _tabTitles = [
     'Accueil',
@@ -63,7 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showActionMessage(String message) {
     if (!mounted) return;
-    final seconds = math.max(4, math.min(8, (message.length / 20).ceil()));
+    final seconds = math.max(
+      _minSnackbarSeconds,
+      math.min(
+        _maxSnackbarSeconds,
+        (message.length / _snackbarCharsPerSecond).ceil(),
+      ),
+    );
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
