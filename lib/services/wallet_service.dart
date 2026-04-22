@@ -33,9 +33,9 @@ class WalletService {
   static const int _privateKeyByteLength = 32;
   static const int _recoveryWordCount = 4;
   // Slows offline brute force on short 4-word phrases while keeping UX acceptable.
-  static const int _recoveryPbkdf2Iterations = 600000;
-  // Must stay deterministic to recover a wallet from phrase only (no extra metadata).
-  static const String _recoveryPbkdf2Salt = 'my-crypto-safe-recovery-v1';
+  static const int _recoveryPbkdf2Iterations = 2000000;
+  // Deterministic salt prefix: recovery remains possible from phrase only.
+  static const String _recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
   static final Set<String> _bip39WordSet =
       Set.unmodifiable(bip39.WORDLIST.toSet());
 
@@ -90,9 +90,12 @@ class WalletService {
     if (bip39.validateMnemonic(cleaned)) {
       return bip39.mnemonicToSeed(cleaned);
     }
+    final phraseSalt = crypto.sha256
+        .convert(utf8.encode('$_recoverySaltPrefix$cleaned'))
+        .bytes;
     return _pbkdf2HmacSha512(
       password: Uint8List.fromList(utf8.encode(cleaned)),
-      salt: Uint8List.fromList(utf8.encode(_recoveryPbkdf2Salt)),
+      salt: Uint8List.fromList(phraseSalt),
       iterations: _recoveryPbkdf2Iterations,
       keyLength: 64,
     );
