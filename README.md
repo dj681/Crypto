@@ -166,7 +166,7 @@ Dans `android/app/build.gradle`, s'assurer que :
 La clé privée Ethereum est dérivée des 32 premiers octets d'une seed de 64 octets.
 Pour les phrases BIP-39 legacy, cette seed vient de `mnemonicToSeed`.
 Pour les nouvelles phrases de 4 mots, la seed est dérivée via PBKDF2-HMAC-SHA512.
-Le format 4 mots réduit fortement l'entropie par rapport à BIP-39 (12 mots) et constitue un compromis UX/sécurité.
+Le format 4 mots (~44 bits d'entropie) réduit fortement la robustesse par rapport à BIP-39 12 mots (~128 bits) et constitue un compromis UX/sécurité.
 Cette dérivation est déterministe et reproductible depuis la phrase, mais n'est pas conforme BIP-44. Une dérivation complète
 (chemin `m/44'/60'/0'/0/0`) peut être ajoutée ultérieurement avec une
 bibliothèque BIP-32 dédiée.
