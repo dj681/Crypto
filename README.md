@@ -42,6 +42,8 @@ lib/
 test/
   wallet_service_test.dart        # Tests unitaires du service wallet
   security_provider_test.dart     # Tests unitaires PIN, biométrie, session
+bin/
+  backend_server.dart             # Backend HTTP léger (health + proxy Binance)
 ```
 
 ## Fonctionnalités implémentées
@@ -87,6 +89,22 @@ test/
    ```
    flutter run
    ```
+
+### Backend (optionnel)
+
+Lancer le backend local :
+
+```
+dart run bin/backend_server.dart
+```
+
+Par défaut il écoute sur `http://localhost:8080` (modifiable via `PORT`).
+
+Pour faire utiliser ce backend par l'app Flutter :
+
+```
+flutter run --dart-define=BACKEND_URL=http://localhost:8080
+```
 
 4. Exécuter les tests :
    ```
