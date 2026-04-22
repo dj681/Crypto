@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Displays a BIP-39 mnemonic phrase as a numbered word grid.
+/// Displays a recovery phrase as a numbered word grid.
 class MnemonicGrid extends StatelessWidget {
   const MnemonicGrid({
     super.key,

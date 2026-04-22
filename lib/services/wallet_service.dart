@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web3dart/web3dart.dart';
@@ -19,15 +21,23 @@ class _Keys {
   static const String txHistory = 'wallet_tx_history';
 }
 
-/// Handles BIP-39 wallet creation/import and all encrypted persistence.
+/// Handles wallet creation/import and all encrypted persistence.
 ///
 /// **Derivation note**: the Ethereum private key is derived from the first
-/// 32 bytes of the 64-byte BIP-39 seed.  This is deterministic and
-/// reproducible from the mnemonic, but is *not* BIP-44 compliant.  A full
-/// HD path (m/44'/60'/0'/0/0) can be added later with a dedicated BIP-32
-/// library.
+/// 32 bytes of a 64-byte seed. Legacy BIP-39 mnemonics use BIP-39 seed
+/// generation; 4-word recovery phrases use PBKDF2-HMAC-SHA512. This is
+/// deterministic and reproducible from the recovery phrase, but is *not*
+/// BIP-44 compliant. A full HD path (m/44'/60'/0'/0/0) can be added later
+/// with a dedicated BIP-32 library.
 class WalletService {
   static const int _privateKeyByteLength = 32;
+  static const int _recoveryWordCount = 4;
+  // Slows offline brute force on short 4-word phrases while keeping UX acceptable.
+  static const int _recoveryPbkdf2Iterations = 2000000;
+  // Deterministic salt prefix: recovery remains possible from phrase only.
+  static const String _recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
+  static final Set<String> _bip39WordSet =
+      Set.unmodifiable(bip39.WORDLIST.toSet());
 
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -53,12 +63,75 @@ class WalletService {
 
   // ── mnemonic generation / validation ─────────────────────────────────────
 
-  /// Returns a fresh 12-word BIP-39 mnemonic (128-bit entropy).
-  String generateMnemonic() => bip39.generateMnemonic();
+  /// Returns a fresh 4-word recovery phrase.
+  String generateMnemonic() {
+    final random = Random.secure();
+    final words = List.generate(
+      _recoveryWordCount,
+      (_) => bip39.WORDLIST[random.nextInt(bip39.WORDLIST.length)],
+    );
+    return words.join(' ');
+  }
 
-  /// Returns true when [mnemonic] is a valid BIP-39 phrase.
-  bool validateMnemonic(String mnemonic) =>
-      bip39.validateMnemonic(mnemonic.trim().toLowerCase());
+  /// Returns true when [mnemonic] is a supported recovery phrase.
+  bool validateMnemonic(String mnemonic) {
+    final cleaned = mnemonic.trim().toLowerCase();
+    return bip39.validateMnemonic(cleaned) || _isFourWordRecoveryPhrase(cleaned);
+  }
+
+  bool _isFourWordRecoveryPhrase(String phrase) {
+    final words = phrase.split(RegExp(r'\s+'));
+    if (words.length != _recoveryWordCount) return false;
+    return words.every(_bip39WordSet.contains);
+  }
+
+  Uint8List _seedFromMnemonic(String mnemonic) {
+    final cleaned = mnemonic.trim().toLowerCase();
+    if (bip39.validateMnemonic(cleaned)) {
+      return bip39.mnemonicToSeed(cleaned);
+    }
+    final phraseSalt = crypto.sha256
+        .convert(utf8.encode('$_recoverySaltPrefix$cleaned'))
+        .bytes;
+    return _pbkdf2HmacSha512(
+      password: Uint8List.fromList(utf8.encode(cleaned)),
+      salt: Uint8List.fromList(phraseSalt),
+      iterations: _recoveryPbkdf2Iterations,
+      keyLength: 64,
+    );
+  }
+
+  Uint8List _pbkdf2HmacSha512({
+    required Uint8List password,
+    required Uint8List salt,
+    required int iterations,
+    required int keyLength,
+  }) {
+    const hmacLength = 64; // SHA-512 output size in bytes.
+    final blocks = (keyLength / hmacLength).ceil();
+    final output = BytesBuilder(copy: false);
+    final hmac = crypto.Hmac(crypto.sha512, password);
+
+    for (var block = 1; block <= blocks; block++) {
+      final blockBytes = Uint8List(4);
+      final blockView = ByteData.view(blockBytes.buffer);
+      blockView.setUint32(0, block, Endian.big);
+      final saltBlock = Uint8List.fromList([...salt, ...blockBytes]);
+
+      var u = Uint8List.fromList(hmac.convert(saltBlock).bytes);
+      final t = Uint8List.fromList(u);
+
+      for (var i = 1; i < iterations; i++) {
+        u = Uint8List.fromList(hmac.convert(u).bytes);
+        for (var j = 0; j < hmacLength; j++) {
+          t[j] ^= u[j];
+        }
+      }
+      output.add(t);
+    }
+
+    return Uint8List.fromList(output.takeBytes().sublist(0, keyLength));
+  }
 
   // ── wallet creation / import ──────────────────────────────────────────────
 
@@ -80,7 +153,7 @@ class WalletService {
   }
 
   Future<WalletModel> _deriveAndPersist(String mnemonic) async {
-    final seed = bip39.mnemonicToSeed(mnemonic);
+    final seed = _seedFromMnemonic(mnemonic);
     final privateKeyHex = _privateKeyHexFromSeed(seed);
     final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
@@ -129,7 +202,7 @@ class WalletService {
           mnemonic.isNotEmpty &&
           validateMnemonic(mnemonic)) {
         try {
-          final seed = bip39.mnemonicToSeed(mnemonic);
+          final seed = _seedFromMnemonic(mnemonic);
           final privateKeyHex = _privateKeyHexFromSeed(seed);
           final credentials = EthPrivateKey.fromHex(privateKeyHex);
           address = credentials.address.hexEip55;

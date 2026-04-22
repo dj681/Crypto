@@ -94,9 +94,9 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'Saisissez vos 12 ou 24 mots de récupération BIP-39, '
+                'Saisissez vos 4 mots de récupération, '
                 'séparés par des espaces. '
-                'La récupération avec seulement 3 mots n\'est pas prise en charge pour des raisons de sécurité.',
+                'Les anciennes phrases BIP-39 (12/24 mots) restent acceptées.',
               ),
               const SizedBox(height: 24),
               TextFormField(
@@ -114,8 +114,8 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
                     return 'La phrase de récupération est requise';
                   }
                   final wordCount = v.trim().split(RegExp(r'\s+')).length;
-                  if (wordCount != 12 && wordCount != 24) {
-                    return 'La phrase doit contenir 12 ou 24 mots (actuellement : $wordCount)';
+                  if (wordCount != 4 && wordCount != 12 && wordCount != 24) {
+                    return 'La phrase doit contenir 4, 12 ou 24 mots (actuellement : $wordCount)';
                   }
                   return null;
                 },
