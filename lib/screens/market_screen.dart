@@ -97,7 +97,7 @@ class _TraderMarketViewState extends State<TraderMarketView> {
     final accountBalanceUsdt = marketProvider.accountBalanceUsdt;
     final accountBalanceEur = marketProvider.accountBalanceEur;
     final ethQuotePrice = _findEthPriceInUsdt(marketProvider.tickers);
-    final accountBalanceEth = ethQuotePrice != null && ethQuotePrice > 0
+    final accountBalanceEth = ethQuotePrice != null && ethQuotePrice > 0.01
         ? accountBalanceUsdt / ethQuotePrice
         : null;
     return Column(
