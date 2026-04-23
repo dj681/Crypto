@@ -31,6 +31,8 @@ class TradeOrder {
 }
 
 class MarketProvider extends ChangeNotifier {
+  static const _positionEpsilon = 0.00000001;
+
   MarketProvider({
     required MarketService marketService,
     double initialAccountBalanceUsd = 10000,
@@ -103,7 +105,7 @@ class MarketProvider extends ChangeNotifier {
       }
       _accountBalanceUsd += total;
       final remaining = currentPosition - quantity;
-      if (remaining == 0) {
+      if (remaining.abs() < _positionEpsilon) {
         _positions.remove(key);
       } else {
         _positions[key] = remaining;

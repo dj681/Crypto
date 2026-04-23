@@ -558,7 +558,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
     final start = ratio <= 0 ? current : current / ratio;
     final direction = current >= start ? 1 : -1;
     // Symbol-based seed keeps curve shape stable per asset across rebuilds.
-    final symbolSeed = widget.ticker.symbol.codeUnits.fold<int>(0, (acc, c) => acc + c);
+    final symbolSeed = widget.ticker.symbol.hashCode;
     final amplitude = math.max(current.abs() * _amplitudeRatio, _minAmplitude);
 
     return List<double>.generate(24, (index) {
@@ -594,7 +594,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
 
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.85,
+      initialChildSize: 0.75,
       minChildSize: 0.55,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
@@ -729,8 +729,12 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                                       SnackBar(content: Text(error.message)),
                                     );
                                   } on ArgumentError catch (error) {
+                                    final message =
+                                        error.message?.toString().trim().isNotEmpty == true
+                                            ? error.message.toString()
+                                            : 'Quantité invalide.';
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(error.message.toString())),
+                                      SnackBar(content: Text(message)),
                                     );
                                   }
                                 },
