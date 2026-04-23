@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../models/market_ticker.dart';
 import '../providers/market_provider.dart';
 
+const _minEthQuotePriceForConversion = 0.01;
+
 String _formatMarketPrice(double value) {
   final precision = value >= 1000
       ? 2
@@ -97,7 +99,8 @@ class _TraderMarketViewState extends State<TraderMarketView> {
     final accountBalanceUsdt = marketProvider.accountBalanceUsdt;
     final accountBalanceEur = marketProvider.accountBalanceEur;
     final ethQuotePrice = _findEthPriceInUsdt(marketProvider.tickers);
-    final accountBalanceEth = ethQuotePrice != null && ethQuotePrice > 0.01
+    final accountBalanceEth = ethQuotePrice != null &&
+            ethQuotePrice > _minEthQuotePriceForConversion
         ? accountBalanceUsdt / ethQuotePrice
         : null;
     return Column(

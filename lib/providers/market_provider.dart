@@ -33,7 +33,8 @@ class TradeOrder {
 class MarketProvider extends ChangeNotifier {
   static const _defaultAccountBalanceUsdt = 10000.0;
   // TODO(dj681): Replace this fixed fallback with a live FX feed for EUR display.
-  // Fixed fallback rate used for UI-only conversion while no FX feed exists yet.
+  // Fixed fallback rate used for UI-only conversion while no FX feed exists yet
+  // (set in April 2026).
   static const _usdtToEurRate = 0.92;
   // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
