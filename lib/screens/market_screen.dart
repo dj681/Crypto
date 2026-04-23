@@ -5,6 +5,21 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/market_ticker.dart';
 import '../providers/market_provider.dart';
 
+String _formatMarketPrice(double value) {
+  final precision = value >= 1000
+      ? 2
+      : value >= 1
+          ? 4
+          : value >= 0.01
+              ? 6
+              : 8;
+  var formatted = value.toStringAsFixed(precision);
+  if (formatted.contains('.')) {
+    formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+  }
+  return formatted;
+}
+
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
 
@@ -308,21 +323,6 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
   final Map<String, int> _buyPositions = {};
   final Map<String, int> _sellPositions = {};
 
-  String _formatPrice(double value) {
-    final precision = value >= 1000
-        ? 2
-        : value >= 1
-            ? 4
-            : value >= 0.01
-                ? 6
-                : 8;
-    var formatted = value.toStringAsFixed(precision);
-    if (formatted.contains('.')) {
-      formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
-    }
-    return formatted;
-  }
-
   void _takePosition(_RealAssetTicker ticker, {required bool isBuy}) {
     setState(() {
       final target = isBuy ? _buyPositions : _sellPositions;
@@ -354,6 +354,11 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
               children: [
                 const Text(
                   'Actifs réels disponibles pour des positions d’achat ou de vente.',
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Données de prix indicatives. Positions suivies localement sur cette session.',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -402,7 +407,7 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
                   ticker: asset,
                   buyPositions: _buyPositions[asset.symbol] ?? 0,
                   sellPositions: _sellPositions[asset.symbol] ?? 0,
-                  formatPrice: _formatPrice,
+                  formatPrice: _formatMarketPrice,
                   onBuy: () => _takePosition(asset, isBuy: true),
                   onSell: () => _takePosition(asset, isBuy: false),
                 );
@@ -424,21 +429,6 @@ class _MarketTickerCard extends StatelessWidget {
   final MarketTicker ticker;
   final VoidCallback onBuy;
   final VoidCallback onSell;
-
-  String _formatPrice(double value) {
-    final precision = value >= 1000
-        ? 2
-        : value >= 1
-            ? 4
-            : value >= 0.01
-                ? 6
-                : 8;
-    var formatted = value.toStringAsFixed(precision);
-    if (formatted.contains('.')) {
-      formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
-    }
-    return formatted;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -464,7 +454,7 @@ class _MarketTickerCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 2),
-                      Text('Prix: ${_formatPrice(ticker.lastPrice)} ${ticker.quoteAsset}'),
+                      Text('Prix: ${_formatMarketPrice(ticker.lastPrice)} ${ticker.quoteAsset}'),
                     ],
                   ),
                 ),
