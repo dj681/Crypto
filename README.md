@@ -20,14 +20,14 @@ lib/
     wallet_provider.dart          # État global du portefeuille + historique
     blockchain_provider.dart      # Solde ETH, envoi de transactions
     security_provider.dart        # Session : verrouillage, PIN, biométrie
-    market_provider.dart          # État du marché Binance
+    market_provider.dart          # État du marché crypto (Binance)
   screens/
     splash_screen.dart            # Chargement initial (wallet/session)
     onboarding_screen.dart        # Choix : créer ou importer
     wallet_create_screen.dart     # Génération BIP-39 + confirmation des mots
     wallet_import_screen.dart     # Import par phrase mnémonique
     home_screen.dart              # Interface principale (Accueil, Trader, Récompense, Découvrir, Convertir)
-    market_screen.dart            # Vue marché Binance complète + recherche + actions achat/vente
+    market_screen.dart            # Vue Trader avec choix Crypto / Actifs réels + actions achat/vente
     send_screen.dart              # Envoi ETH
     receive_screen.dart           # QR code + adresse à copier
     history_screen.dart           # Historique complet des transactions
@@ -59,8 +59,9 @@ bin/
 - Envoi de transactions ETH avec estimation des frais gas
 - Historique local des transactions (envoi/réception, statut)
 - URL RPC personnalisable depuis les paramètres
-- Marché Binance spot complet (toutes les paires disponibles) avec actualisation
-- Actions Achat / Vente depuis l'app (redirection vers Binance)
+- Marché crypto Binance spot complet (toutes les paires disponibles) avec actualisation
+- Marché des actifs réels (or, pétrole, diamant, etc.) avec positions d'achat/vente
+- Sélecteur de marché dans l'onglet Trader (crypto-monnaies numériques / actifs réels)
 
 ### Sécurité
 - Code PIN (6 chiffres) avec hash SHA-256 en stockage sécurisé

@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   formatPrice: _formatPrice,
                   onOpenTrader: () => setState(() => _selectedIndex = 1),
                 ),
-                const BinanceMarketView(
+                const TraderMarketView(
                   contentPadding:
                       EdgeInsets.fromLTRB(16, 16, 16, _marketViewBottomPadding),
                   showIntroText: false,
@@ -168,8 +168,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   onOpenDapps: () => _showActionMessage(
                     'Ouverture des DApps populaires en préparation.',
                   ),
-                  onOpenTrends: () => _openTraderWithMessage(
-                    'Voici les tendances crypto en temps réel.',
+                   onOpenTrends: () => _openTraderWithMessage(
+                    'Voici les tendances de marché en temps réel.',
                   ),
                   onOpenLearn: () => _showActionMessage(
                     'La section apprentissage sera disponible bientôt.',
