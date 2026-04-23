@@ -52,6 +52,16 @@ double? _findEthPriceInUsdt(List<MarketTicker> tickers) {
   return null;
 }
 
+double? _calculateEthBalance({
+  required double accountBalanceUsdt,
+  required double? ethQuotePrice,
+}) {
+  if (ethQuotePrice == null || ethQuotePrice <= _minEthQuotePriceForConversion) {
+    return null;
+  }
+  return accountBalanceUsdt / ethQuotePrice;
+}
+
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
 
@@ -99,10 +109,10 @@ class _TraderMarketViewState extends State<TraderMarketView> {
     final accountBalanceUsdt = marketProvider.accountBalanceUsdt;
     final accountBalanceEur = marketProvider.accountBalanceEur;
     final ethQuotePrice = _findEthPriceInUsdt(marketProvider.tickers);
-    final accountBalanceEth = ethQuotePrice != null &&
-            ethQuotePrice > _minEthQuotePriceForConversion
-        ? accountBalanceUsdt / ethQuotePrice
-        : null;
+    final accountBalanceEth = _calculateEthBalance(
+      accountBalanceUsdt: accountBalanceUsdt,
+      ethQuotePrice: ethQuotePrice,
+    );
     return Column(
       children: [
         Padding(
