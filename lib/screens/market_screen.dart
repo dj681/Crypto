@@ -38,6 +38,18 @@ String _formatDateTime(DateTime dateTime) {
   return '$d/$m/$y $h:$min';
 }
 
+double? _findEthQuotePrice(List<MarketTicker> tickers) {
+  for (final ticker in tickers) {
+    final isEth = ticker.baseAsset.toUpperCase() == 'ETH';
+    final isUsdQuote = ticker.quoteAsset.toUpperCase() == 'USD' ||
+        ticker.quoteAsset.toUpperCase() == 'USDT';
+    if (isEth && isUsdQuote && ticker.lastPrice > 0) {
+      return ticker.lastPrice;
+    }
+  }
+  return null;
+}
+
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
 
@@ -82,6 +94,11 @@ class _TraderMarketViewState extends State<TraderMarketView> {
   @override
   Widget build(BuildContext context) {
     final marketProvider = context.watch<MarketProvider>();
+    final accountBalanceUsdt = marketProvider.accountBalanceUsdt;
+    final accountBalanceEur = marketProvider.accountBalanceEur;
+    final ethQuotePrice = _findEthQuotePrice(marketProvider.tickers);
+    final accountBalanceEth =
+        ethQuotePrice != null ? accountBalanceUsdt / ethQuotePrice : null;
     return Column(
       children: [
         Padding(
@@ -105,8 +122,10 @@ class _TraderMarketViewState extends State<TraderMarketView> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Solde disponible compte: '
-                          '${_formatAmount(marketProvider.accountBalanceUsd, maxFractionDigits: 2)} USD',
+                          'Total du compte: '
+                          '${_formatAmount(accountBalanceUsdt, maxFractionDigits: 2)} USDT'
+                          ' • ${_formatAmount(accountBalanceEur, maxFractionDigits: 2)} EUR'
+                          '${accountBalanceEth != null ? ' • ${_formatAmount(accountBalanceEth)} ETH' : ''}',
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ),
@@ -577,7 +596,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
   @override
   Widget build(BuildContext context) {
     final marketProvider = context.watch<MarketProvider>();
-    final balance = marketProvider.accountBalanceUsd;
+    final balance = marketProvider.accountBalanceUsdt;
     final position = marketProvider.getPosition(
       market: widget.market,
       symbol: widget.ticker.symbol,
@@ -661,7 +680,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Solde disponible: ${_formatAmount(balance, maxFractionDigits: 2)} USD',
+                        'Solde disponible: ${_formatAmount(balance, maxFractionDigits: 2)} USDT',
                       ),
                       Text(
                         'Position ouverte: ${_formatAmount(position)} ${widget.ticker.baseAsset}',
@@ -698,7 +717,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Montant estimé: ${_formatAmount(total, maxFractionDigits: 2)} USD',
+                        'Montant estimé: ${_formatAmount(total, maxFractionDigits: 2)} USDT',
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
@@ -785,7 +804,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                               '${_formatAmount(order.quantity)} ${order.baseAsset}',
                             ),
                             subtitle: Text(
-                              '${_formatAmount(order.total, maxFractionDigits: 2)} USD • ${_formatDateTime(order.executedAt)}',
+                              '${_formatAmount(order.total, maxFractionDigits: 2)} USDT • ${_formatDateTime(order.executedAt)}',
                             ),
                           );
                         }),
