@@ -110,7 +110,7 @@ class _TraderMarketViewState extends State<TraderMarketView> {
             children: [
               if (widget.showIntroText) ...[
                 const Text(
-                  'Choisissez le marché à visiter : crypto-monnaies ou actifs réels.',
+                  'Choisissez le marché à consulter : crypto-monnaies ou actifs réels.',
                 ),
                 const SizedBox(height: 12),
               ],
@@ -357,7 +357,7 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Prix indicatifs. Positions suivies localement sur cette session.',
+                  'Prix indicatifs (exemples statiques). Positions suivies localement durant cette session.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
