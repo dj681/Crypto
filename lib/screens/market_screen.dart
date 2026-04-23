@@ -530,6 +530,9 @@ class _TradeComposerSheet extends StatefulWidget {
 }
 
 class _TradeComposerSheetState extends State<_TradeComposerSheet> {
+  static const _amplitudeRatio = 0.015;
+  static const _minAmplitude = 0.0001;
+
   late TradeSide _selectedSide;
   final TextEditingController _quantityController = TextEditingController(text: '1');
 
@@ -550,15 +553,16 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
     final ratio = 1 + (widget.ticker.priceChangePercent / 100);
     final start = ratio <= 0 ? current : current / ratio;
     final direction = current >= start ? 1 : -1;
-    final hash = widget.ticker.symbol.codeUnits.fold<int>(0, (acc, c) => acc + c);
-    final amplitude = math.max(current.abs() * 0.015, 0.0001);
+    final symbolSeed = widget.ticker.symbol.codeUnits.fold<int>(0, (acc, c) => acc + c);
+    final amplitude = math.max(current.abs() * _amplitudeRatio, _minAmplitude);
 
     return List<double>.generate(24, (index) {
       final progress = index / 23;
       final baseline = start + ((current - start) * progress);
-      final waveA = math.sin(progress * math.pi * 2) * amplitude;
-      final waveB = math.sin(progress * math.pi * 6 + hash) * amplitude * 0.35;
-      return math.max(0.00000001, baseline + ((waveA + waveB) * direction));
+      final primaryWave = math.sin(progress * math.pi * 2) * amplitude;
+      final secondaryWave =
+          math.sin(progress * math.pi * 6 + symbolSeed) * amplitude * 0.35;
+      return math.max(0.00000001, baseline + ((primaryWave + secondaryWave) * direction));
     });
   }
 
