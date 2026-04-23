@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onOpenDapps: () => _showActionMessage(
                     'Ouverture des DApps populaires en préparation.',
                   ),
-                   onOpenTrends: () => _openTraderWithMessage(
+                  onOpenTrends: () => _openTraderWithMessage(
                     'Voici les tendances de marché en temps réel.',
                   ),
                   onOpenLearn: () => _showActionMessage(
