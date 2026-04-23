@@ -8,10 +8,21 @@ void main() {
   group('MarketService', () {
     test('fetchBinanceMarket filters on USDT and sorts by quoteVolume', () async {
       final mockClient = MockClient((request) async {
-        expect(
-          request.url.toString(),
-          'https://api.binance.com/api/v3/ticker/24hr',
-        );
+        if (request.url.toString() == 'https://api.binance.com/api/v3/exchangeInfo') {
+          return http.Response(
+            '''
+{
+  "symbols": [
+    {"symbol":"ETHUSDT","baseAsset":"ETH","quoteAsset":"USDT"},
+    {"symbol":"BTCUSDT","baseAsset":"BTC","quoteAsset":"USDT"},
+    {"symbol":"BTCBUSD","baseAsset":"BTC","quoteAsset":"BUSD"}
+  ]
+}
+''',
+            200,
+          );
+        }
+        expect(request.url.toString(), 'https://api.binance.com/api/v3/ticker/24hr');
         return http.Response(
           '''
 [
@@ -34,6 +45,12 @@ void main() {
 
     test('fetchBinanceMarket throws when API status is not 200', () async {
       final mockClient = MockClient((request) async {
+        if (request.url.toString() == 'https://api.binance.com/api/v3/exchangeInfo') {
+          return http.Response(
+            '{"symbols":[{"symbol":"BTCUSDT","baseAsset":"BTC","quoteAsset":"USDT"}]}',
+            200,
+          );
+        }
         return http.Response('error', 500);
       });
 
@@ -46,6 +63,19 @@ void main() {
 
     test('fetchBinanceMarket ignores rows with invalid numeric values', () async {
       final mockClient = MockClient((request) async {
+        if (request.url.toString() == 'https://api.binance.com/api/v3/exchangeInfo') {
+          return http.Response(
+            '''
+{
+  "symbols": [
+    {"symbol":"SOLUSDT","baseAsset":"SOL","quoteAsset":"USDT"},
+    {"symbol":"ADAUSDT","baseAsset":"ADA","quoteAsset":"USDT"}
+  ]
+}
+''',
+            200,
+          );
+        }
         return http.Response(
           '''
 [
@@ -62,6 +92,17 @@ void main() {
 
       expect(tickers.length, 1);
       expect(tickers.first.symbol, 'ADAUSDT');
+    });
+
+    test('fetchRealAssetsMarket returns fallback assets when backend is disabled', () async {
+      final service = MarketService(httpClient: MockClient((request) async {
+        return http.Response('', 500);
+      }));
+
+      final tickers = await service.fetchRealAssetsMarket();
+
+      expect(tickers, isNotEmpty);
+      expect(tickers.any((ticker) => ticker.symbol == 'XAUUSD'), isTrue);
     });
   });
 }

@@ -11,6 +11,7 @@ class MarketService {
 
   static const String _backendBaseUrl =
       String.fromEnvironment('BACKEND_URL', defaultValue: '');
+  static final Uri? _backendUri = _parseBackendBaseUri(_backendBaseUrl);
   static final Uri _tickerUri = _resolveApiUri(
     backendPath: '/api/binance/ticker24h',
     fallbackUrl: 'https://api.binance.com/api/v3/ticker/24hr',
@@ -19,6 +20,15 @@ class MarketService {
     backendPath: '/api/binance/exchangeInfo',
     fallbackUrl: 'https://api.binance.com/api/v3/exchangeInfo',
   );
+  static final Uri _cryptoMarketUri = _resolveApiUri(
+    backendPath: '/api/market/crypto',
+    fallbackUrl: 'https://api.binance.com/api/v3/ticker/24hr',
+  );
+  static final Uri _realAssetsMarketUri = _resolveApiUri(
+    backendPath: '/api/market/real-assets',
+    fallbackUrl: '',
+  );
+  static final bool _hasValidBackend = _backendUri != null;
 
   // Cache the symbol→(base,quote) map: exchangeInfo is ~3 MB and rarely changes.
   // This service runs only on the main Flutter isolate, so no synchronization needed.
@@ -28,10 +38,8 @@ class MarketService {
     required String backendPath,
     required String fallbackUrl,
   }) {
-    final backend = _backendBaseUrl.trim();
-    if (backend.isEmpty) return Uri.parse(fallbackUrl);
-    final parsed = Uri.tryParse(backend);
-    if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) {
+    final parsed = _backendUri;
+    if (parsed == null) {
       return Uri.parse(fallbackUrl);
     }
     final basePath = parsed.path.endsWith('/')
@@ -41,6 +49,46 @@ class MarketService {
       path: '$basePath$backendPath',
       queryParameters: null,
     );
+  }
+
+  static Uri? _parseBackendBaseUri(String value) {
+    final backend = value.trim();
+    if (backend.isEmpty) return null;
+    final parsed = Uri.tryParse(backend);
+    if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) return null;
+    return parsed;
+  }
+
+  Future<List<MarketTicker>> fetchCryptoMarket({int? limit}) async {
+    if (_hasValidBackend) {
+      final response = await _httpClient
+          .get(_cryptoMarketUri)
+          .timeout(const Duration(seconds: 20))
+          .catchError((Object e) => throw StateError('Erreur réseau marché crypto.'));
+      if (response.statusCode != 200) {
+        throw StateError('Erreur backend marché crypto (${response.statusCode})');
+      }
+      return _extractTickers(response.body, limit: limit);
+    }
+    return fetchBinanceMarket(limit: limit, quoteAsset: null);
+  }
+
+  Future<List<MarketTicker>> fetchRealAssetsMarket({int? limit}) async {
+    if (_hasValidBackend) {
+      final response = await _httpClient
+          .get(_realAssetsMarketUri)
+          .timeout(const Duration(seconds: 20))
+          .catchError((Object e) => throw StateError('Erreur réseau actifs réels.'));
+      if (response.statusCode != 200) {
+        throw StateError('Erreur backend actifs réels (${response.statusCode})');
+      }
+      return _extractTickers(response.body, limit: limit);
+    }
+    final defaults = _defaultRealAssets;
+    if (limit != null && limit > 0 && defaults.length > limit) {
+      return defaults.take(limit).toList(growable: false);
+    }
+    return defaults;
   }
 
   Future<List<MarketTicker>> fetchBinanceMarket({
@@ -152,4 +200,90 @@ class MarketService {
     }
     return tickers;
   }
+
+  List<MarketTicker> _extractTickers(String body, {int? limit}) {
+    final decoded = jsonDecode(body);
+    final rawTickers = decoded is Map<String, dynamic> ? decoded['tickers'] : decoded;
+    if (rawTickers is! List) {
+      throw const FormatException('Réponse marché inattendue.');
+    }
+    final tickers = <MarketTicker>[];
+    for (final item in rawTickers) {
+      if (item is! Map<String, dynamic>) continue;
+      try {
+        final ticker = MarketTicker.fromJson(item);
+        if (ticker.symbol.isEmpty ||
+            ticker.baseAsset.isEmpty ||
+            ticker.quoteAsset.isEmpty) {
+          continue;
+        }
+        tickers.add(ticker);
+      } catch (_) {
+        continue;
+      }
+    }
+    tickers.sort((a, b) => b.quoteVolume.compareTo(a.quoteVolume));
+    if (limit != null && limit > 0 && tickers.length > limit) {
+      return tickers.take(limit).toList(growable: false);
+    }
+    return tickers;
+  }
+
+  static const List<MarketTicker> _defaultRealAssets = [
+    MarketTicker(
+      symbol: 'XAUUSD',
+      baseAsset: 'XAU',
+      quoteAsset: 'USD',
+      lastPrice: 2388.42,
+      priceChangePercent: 0.87,
+      quoteVolume: 1,
+      name: 'Or',
+      unit: 'oz',
+      market: 'real-assets',
+    ),
+    MarketTicker(
+      symbol: 'BRNUSD',
+      baseAsset: 'BRN',
+      quoteAsset: 'USD',
+      lastPrice: 83.16,
+      priceChangePercent: -0.42,
+      quoteVolume: 1,
+      name: 'Pétrole Brent',
+      unit: 'baril',
+      market: 'real-assets',
+    ),
+    MarketTicker(
+      symbol: 'WTIUSD',
+      baseAsset: 'WTI',
+      quoteAsset: 'USD',
+      lastPrice: 79.95,
+      priceChangePercent: -0.35,
+      quoteVolume: 1,
+      name: 'Pétrole WTI',
+      unit: 'baril',
+      market: 'real-assets',
+    ),
+    MarketTicker(
+      symbol: 'XAGUSD',
+      baseAsset: 'XAG',
+      quoteAsset: 'USD',
+      lastPrice: 28.74,
+      priceChangePercent: 0.65,
+      quoteVolume: 1,
+      name: 'Argent',
+      unit: 'oz',
+      market: 'real-assets',
+    ),
+    MarketTicker(
+      symbol: 'XPTUSD',
+      baseAsset: 'XPT',
+      quoteAsset: 'USD',
+      lastPrice: 980.30,
+      priceChangePercent: 0.18,
+      quoteVolume: 1,
+      name: 'Platine',
+      unit: 'oz',
+      market: 'real-assets',
+    ),
+  ];
 }

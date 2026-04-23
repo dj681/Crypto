@@ -10,25 +10,46 @@ class MarketProvider extends ChangeNotifier {
 
   final MarketService _marketService;
 
-  List<MarketTicker> _tickers = [];
-  MarketStatus _status = MarketStatus.idle;
-  String? _error;
+  List<MarketTicker> _cryptoTickers = [];
+  List<MarketTicker> _realAssetTickers = [];
+  MarketStatus _cryptoStatus = MarketStatus.idle;
+  MarketStatus _realAssetsStatus = MarketStatus.idle;
+  String? _cryptoError;
+  String? _realAssetsError;
 
-  List<MarketTicker> get tickers => List.unmodifiable(_tickers);
-  MarketStatus get status => _status;
-  String? get error => _error;
-  bool get isLoading => _status == MarketStatus.loading;
+  List<MarketTicker> get tickers => List.unmodifiable(_cryptoTickers);
+  List<MarketTicker> get realAssetTickers => List.unmodifiable(_realAssetTickers);
+  MarketStatus get status => _cryptoStatus;
+  MarketStatus get realAssetsStatus => _realAssetsStatus;
+  String? get error => _cryptoError;
+  String? get realAssetsError => _realAssetsError;
+  bool get isLoading => _cryptoStatus == MarketStatus.loading;
+  bool get isRealAssetsLoading => _realAssetsStatus == MarketStatus.loading;
 
   Future<void> refreshMarket() async {
-    _status = MarketStatus.loading;
-    _error = null;
+    _cryptoStatus = MarketStatus.loading;
+    _cryptoError = null;
     notifyListeners();
     try {
-      _tickers = await _marketService.fetchBinanceMarket(quoteAsset: null);
-      _status = MarketStatus.ready;
+      _cryptoTickers = await _marketService.fetchCryptoMarket();
+      _cryptoStatus = MarketStatus.ready;
     } catch (e) {
-      _status = MarketStatus.error;
-      _error = 'Impossible de charger le marché Binance : $e';
+      _cryptoStatus = MarketStatus.error;
+      _cryptoError = 'Impossible de charger le marché crypto : $e';
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshRealAssetsMarket() async {
+    _realAssetsStatus = MarketStatus.loading;
+    _realAssetsError = null;
+    notifyListeners();
+    try {
+      _realAssetTickers = await _marketService.fetchRealAssetsMarket();
+      _realAssetsStatus = MarketStatus.ready;
+    } catch (e) {
+      _realAssetsStatus = MarketStatus.error;
+      _realAssetsError = 'Impossible de charger les actifs réels : $e';
     }
     notifyListeners();
   }
