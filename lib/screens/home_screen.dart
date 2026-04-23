@@ -15,6 +15,24 @@ import 'receive_screen.dart';
 import 'send_screen.dart';
 import 'settings_screen.dart';
 
+// Compiled once; reused on every format call to avoid repeated JS regex compilation.
+final _trailingZerosPattern = RegExp(r'\.?0+$');
+
+String _formatPrice(double value) {
+  final precision = value >= 1000
+      ? 2
+      : value >= 1
+          ? 4
+          : value >= 0.01
+              ? 6
+              : 8;
+  var formatted = value.toStringAsFixed(precision);
+  if (formatted.contains('.')) {
+    formatted = formatted.replaceFirst(_trailingZerosPattern, '');
+  }
+  return formatted;
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -100,26 +118,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _formatPrice(double value) {
-    final precision = value >= 1000
-        ? 2
-        : value >= 1
-            ? 4
-            : value >= 0.01
-                ? 6
-                : 8;
-    var formatted = value.toStringAsFixed(precision);
-    if (formatted.contains('.')) {
-      formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
-    }
-    return formatted;
-  }
-
   @override
   Widget build(BuildContext context) {
     final walletProvider = context.watch<WalletProvider>();
-    final blockchainProvider = context.watch<BlockchainProvider>();
-    final marketProvider = context.watch<MarketProvider>();
     final wallet = walletProvider.wallet;
 
     return Scaffold(
@@ -141,11 +142,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 _AccueilTab(
                   wallet: wallet,
                   walletProvider: walletProvider,
-                  blockchainProvider: blockchainProvider,
-                  marketProvider: marketProvider,
                   onRefreshBalance: _refreshBalance,
                   onRefreshMarket: _refreshMarket,
-                  formatPrice: _formatPrice,
                   onOpenTrader: () => setState(() => _selectedIndex = 1),
                 ),
                 const TraderMarketView(
@@ -227,25 +225,23 @@ class _AccueilTab extends StatelessWidget {
   const _AccueilTab({
     required this.wallet,
     required this.walletProvider,
-    required this.blockchainProvider,
-    required this.marketProvider,
     required this.onRefreshBalance,
     required this.onRefreshMarket,
-    required this.formatPrice,
     required this.onOpenTrader,
   });
 
   final WalletModel wallet;
   final WalletProvider walletProvider;
-  final BlockchainProvider blockchainProvider;
-  final MarketProvider marketProvider;
   final VoidCallback onRefreshBalance;
   final VoidCallback onRefreshMarket;
-  final String Function(double value) formatPrice;
   final VoidCallback onOpenTrader;
 
   @override
   Widget build(BuildContext context) {
+    // Watch providers here so only _AccueilTab rebuilds on their changes,
+    // not the entire HomeScreen with all its IndexedStack children.
+    final blockchainProvider = context.watch<BlockchainProvider>();
+    final marketProvider = context.watch<MarketProvider>();
     final recentHistory = walletProvider.history.take(5).toList();
     final marketTickers =
         marketProvider.tickers.take(_marketPreviewItemCount).toList();
@@ -341,7 +337,7 @@ class _AccueilTab extends StatelessWidget {
                         dense: true,
                         title: Text('${ticker.baseAsset}/${ticker.quoteAsset}'),
                         subtitle: Text(
-                          '${formatPrice(ticker.lastPrice)} ${ticker.quoteAsset}',
+                          '${_formatPrice(ticker.lastPrice)} ${ticker.quoteAsset}',
                         ),
                         trailing: Text(
                           '${positive ? '+' : ''}${ticker.priceChangePercent.toStringAsFixed(2)}%',
