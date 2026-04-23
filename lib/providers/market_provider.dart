@@ -31,7 +31,11 @@ class TradeOrder {
 }
 
 class MarketProvider extends ChangeNotifier {
-  MarketProvider({required MarketService marketService}) : _marketService = marketService;
+  MarketProvider({
+    required MarketService marketService,
+    double initialAccountBalanceUsd = 10000,
+  })  : _marketService = marketService,
+        _accountBalanceUsd = initialAccountBalanceUsd;
 
   final MarketService _marketService;
 
@@ -41,7 +45,7 @@ class MarketProvider extends ChangeNotifier {
   MarketStatus _realAssetsStatus = MarketStatus.idle;
   String? _cryptoError;
   String? _realAssetsError;
-  double _accountBalanceUsd = 10000;
+  double _accountBalanceUsd;
   final Map<String, double> _positions = {};
   final List<TradeOrder> _orders = [];
 
@@ -99,7 +103,7 @@ class MarketProvider extends ChangeNotifier {
       }
       _accountBalanceUsd += total;
       final remaining = currentPosition - quantity;
-      if (remaining <= 0) {
+      if (remaining == 0) {
         _positions.remove(key);
       } else {
         _positions[key] = remaining;

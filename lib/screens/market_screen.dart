@@ -530,8 +530,12 @@ class _TradeComposerSheet extends StatefulWidget {
 }
 
 class _TradeComposerSheetState extends State<_TradeComposerSheet> {
+  // Relative amplitude used to synthesize a 24h intraday curve from 24h change.
   static const _amplitudeRatio = 0.015;
+  // Absolute minimum amplitude to keep a visible curve for tiny prices.
   static const _minAmplitude = 0.0001;
+  // Safety floor to avoid non-positive values in synthetic chart points.
+  static const _minSyntheticPrice = 0.00000001;
 
   late TradeSide _selectedSide;
   final TextEditingController _quantityController = TextEditingController(text: '1');
@@ -553,6 +557,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
     final ratio = 1 + (widget.ticker.priceChangePercent / 100);
     final start = ratio <= 0 ? current : current / ratio;
     final direction = current >= start ? 1 : -1;
+    // Symbol-based seed keeps curve shape stable per asset across rebuilds.
     final symbolSeed = widget.ticker.symbol.codeUnits.fold<int>(0, (acc, c) => acc + c);
     final amplitude = math.max(current.abs() * _amplitudeRatio, _minAmplitude);
 
@@ -562,7 +567,10 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
       final primaryWave = math.sin(progress * math.pi * 2) * amplitude;
       final secondaryWave =
           math.sin(progress * math.pi * 6 + symbolSeed) * amplitude * 0.35;
-      return math.max(0.00000001, baseline + ((primaryWave + secondaryWave) * direction));
+      return math.max(
+        _minSyntheticPrice,
+        baseline + ((primaryWave + secondaryWave) * direction),
+      );
     });
   }
 
@@ -812,6 +820,8 @@ class _EvolutionChart extends StatelessWidget {
 }
 
 class _EvolutionChartPainter extends CustomPainter {
+  static const _minSpan = 0.0000001;
+
   const _EvolutionChartPainter({
     required this.values,
     required this.color,
@@ -842,7 +852,7 @@ class _EvolutionChartPainter extends CustomPainter {
 
     final minValue = values.reduce(math.min);
     final maxValue = values.reduce(math.max);
-    final span = math.max(maxValue - minValue, 0.0000001);
+    final span = math.max(maxValue - minValue, _minSpan);
 
     final path = Path();
     for (var i = 0; i < values.length; i++) {
