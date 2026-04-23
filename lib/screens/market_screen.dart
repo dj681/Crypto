@@ -6,8 +6,6 @@ import 'package:provider/provider.dart';
 import '../models/market_ticker.dart';
 import '../providers/market_provider.dart';
 
-const _minEthQuotePriceForConversion = 0.01;
-
 String _formatMarketPrice(double value) {
   final precision = value >= 1000
       ? 2
@@ -40,27 +38,6 @@ String _formatDateTime(DateTime dateTime) {
   return '$d/$m/$y $h:$min';
 }
 
-double? _findEthPriceInUsdt(List<MarketTicker> tickers) {
-  for (final ticker in tickers) {
-    final isEth = ticker.baseAsset.toUpperCase() == 'ETH';
-    final isUsdQuote = ticker.quoteAsset.toUpperCase() == 'USD' ||
-        ticker.quoteAsset.toUpperCase() == 'USDT';
-    if (isEth && isUsdQuote && ticker.lastPrice > 0) {
-      return ticker.lastPrice;
-    }
-  }
-  return null;
-}
-
-double? _calculateEthBalance({
-  required double accountBalanceUsdt,
-  required double? ethQuotePrice,
-}) {
-  if (ethQuotePrice == null || ethQuotePrice <= _minEthQuotePriceForConversion) {
-    return null;
-  }
-  return accountBalanceUsdt / ethQuotePrice;
-}
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -108,11 +85,6 @@ class _TraderMarketViewState extends State<TraderMarketView> {
     final marketProvider = context.watch<MarketProvider>();
     final accountBalanceUsdt = marketProvider.accountBalanceUsdt;
     final accountBalanceEur = marketProvider.accountBalanceEur;
-    final ethQuotePrice = _findEthPriceInUsdt(marketProvider.tickers);
-    final accountBalanceEth = _calculateEthBalance(
-      accountBalanceUsdt: accountBalanceUsdt,
-      ethQuotePrice: ethQuotePrice,
-    );
     return Column(
       children: [
         Padding(
@@ -138,8 +110,7 @@ class _TraderMarketViewState extends State<TraderMarketView> {
                         child: Text(
                           'Total du compte: '
                           '${_formatAmount(accountBalanceUsdt, maxFractionDigits: 2)} USDT'
-                          ' • ${_formatAmount(accountBalanceEur, maxFractionDigits: 2)} EUR'
-                          '${accountBalanceEth != null ? ' • ${_formatAmount(accountBalanceEth)} ETH' : ''}',
+                          ' • ${_formatAmount(accountBalanceEur, maxFractionDigits: 2)} EUR',
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ),
@@ -547,6 +518,63 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
   }
 }
 
+enum _ChartPeriod { h1, d1, m1, y1 }
+
+extension _ChartPeriodLabel on _ChartPeriod {
+  String get label {
+    switch (this) {
+      case _ChartPeriod.h1:
+        return '1H';
+      case _ChartPeriod.d1:
+        return '1J';
+      case _ChartPeriod.m1:
+        return '1M';
+      case _ChartPeriod.y1:
+        return '1A';
+    }
+  }
+
+  String get chartTitle {
+    switch (this) {
+      case _ChartPeriod.h1:
+        return 'Évolution du marché (1 heure)';
+      case _ChartPeriod.d1:
+        return 'Évolution du marché (1 jour)';
+      case _ChartPeriod.m1:
+        return 'Évolution du marché (1 mois)';
+      case _ChartPeriod.y1:
+        return 'Évolution du marché (1 an)';
+    }
+  }
+
+  int get pointCount {
+    switch (this) {
+      case _ChartPeriod.h1:
+        return 60;
+      case _ChartPeriod.d1:
+        return 24;
+      case _ChartPeriod.m1:
+        return 30;
+      case _ChartPeriod.y1:
+        return 52;
+    }
+  }
+
+  // Relative scale of price variation for the synthetic curve.
+  double get amplitudeScale {
+    switch (this) {
+      case _ChartPeriod.h1:
+        return 0.25;
+      case _ChartPeriod.d1:
+        return 1.0;
+      case _ChartPeriod.m1:
+        return 3.5;
+      case _ChartPeriod.y1:
+        return 12.0;
+    }
+  }
+}
+
 class _TradeComposerSheet extends StatefulWidget {
   const _TradeComposerSheet({
     required this.market,
@@ -571,6 +599,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
   static const _minSyntheticPrice = 0.00000001;
 
   late TradeSide _selectedSide;
+  _ChartPeriod _selectedPeriod = _ChartPeriod.d1;
   final TextEditingController _quantityController = TextEditingController(text: '1');
 
   @override
@@ -585,17 +614,21 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
     super.dispose();
   }
 
-  List<double> _buildEvolutionSeries() {
+  List<double> _buildEvolutionSeries(_ChartPeriod period) {
     final current = widget.ticker.lastPrice;
     final ratio = 1 + (widget.ticker.priceChangePercent / 100);
     final start = ratio <= 0 ? current : current / ratio;
     final direction = current >= start ? 1 : -1;
     // Symbol-based seed keeps curve shape stable per asset across rebuilds.
     final symbolSeed = widget.ticker.symbol.hashCode;
-    final amplitude = math.max(current.abs() * _amplitudeRatio, _minAmplitude);
+    final amplitude = math.max(
+      current.abs() * _amplitudeRatio * period.amplitudeScale,
+      _minAmplitude,
+    );
+    final count = period.pointCount;
 
-    return List<double>.generate(24, (index) {
-      final progress = index / 23;
+    return List<double>.generate(count, (index) {
+      final progress = index / (count - 1);
       final baseline = start + ((current - start) * progress);
       final primaryWave = math.sin(progress * math.pi * 2) * amplitude;
       final secondaryWave =
@@ -666,14 +699,33 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Évolution du marché (24h)',
+                        _selectedPeriod.chartTitle,
                         style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<_ChartPeriod>(
+                          segments: _ChartPeriod.values
+                              .map(
+                                (p) => ButtonSegment(
+                                  value: p,
+                                  label: Text(p.label),
+                                ),
+                              )
+                              .toList(growable: false),
+                          selected: {_selectedPeriod},
+                          onSelectionChanged: (selection) {
+                            if (selection.isEmpty) return;
+                            setState(() => _selectedPeriod = selection.first);
+                          },
+                        ),
                       ),
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 140,
                         child: _EvolutionChart(
-                          values: _buildEvolutionSeries(),
+                          values: _buildEvolutionSeries(_selectedPeriod),
                           isPositive: widget.ticker.priceChangePercent >= 0,
                         ),
                       ),
