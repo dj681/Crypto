@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../providers/blockchain_provider.dart';
+import '../providers/market_provider.dart';
 
-/// Displays the wallet ETH balance prominently on the home screen.
+/// Displays the account balance in USDT and EUR on the home screen.
 class BalanceCard extends StatelessWidget {
   const BalanceCard({
     super.key,
     required this.address,
-    required this.blockchainProvider,
+    required this.marketProvider,
     required this.onRefresh,
   });
 
   final String address;
-  final BlockchainProvider blockchainProvider;
+  final MarketProvider marketProvider;
   final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bp = blockchainProvider;
+    final mp = marketProvider;
 
     return Card(
       elevation: 4,
@@ -34,7 +34,7 @@ class BalanceCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Solde ETH',
+                  'Solde total',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onPrimary.withOpacity(0.8),
                   ),
@@ -45,22 +45,13 @@ class BalanceCard extends StatelessWidget {
                     color: theme.colorScheme.onPrimary,
                     size: 20,
                   ),
-                  onPressed: bp.isLoading ? null : onRefresh,
+                  onPressed: mp.isLoading ? null : onRefresh,
                   tooltip: 'Actualiser',
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            _buildBalanceText(context, bp, theme),
-            if (bp.gasPrice != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Gas: ${bp.gasPrice!.toStringAsFixed(2)} Gwei',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.7),
-                ),
-              ),
-            ],
+            _buildBalanceText(mp, theme),
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () {
@@ -98,35 +89,28 @@ class BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBalanceText(
-    BuildContext context,
-    BlockchainProvider bp,
-    ThemeData theme,
-  ) {
-    if (bp.isLoading) {
-      return SizedBox(
-        height: 40,
-        child: CircularProgressIndicator(
-          color: theme.colorScheme.onPrimary,
-          strokeWidth: 2,
+  Widget _buildBalanceText(MarketProvider mp, ThemeData theme) {
+    final balanceUsdt = mp.accountBalanceUsdt;
+    final balanceEur = mp.accountBalanceEur;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${balanceUsdt.toStringAsFixed(2)} USDT',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            color: theme.colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      );
-    }
-    if (bp.status == BlockchainStatus.error) {
-      return Text(
-        'Erreur réseau',
-        style: theme.textTheme.titleLarge?.copyWith(
-          color: theme.colorScheme.onPrimary,
+        const SizedBox(height: 4),
+        Text(
+          '${balanceEur.toStringAsFixed(2)} EUR',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onPrimary.withOpacity(0.9),
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      );
-    }
-    final balance = bp.balance;
-    return Text(
-      balance != null ? '${balance.toStringAsFixed(6)} ETH' : '— ETH',
-      style: theme.textTheme.headlineMedium?.copyWith(
-        color: theme.colorScheme.onPrimary,
-        fontWeight: FontWeight.bold,
-      ),
+      ],
     );
   }
 }
