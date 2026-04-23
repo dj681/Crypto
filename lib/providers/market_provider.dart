@@ -31,15 +31,19 @@ class TradeOrder {
 }
 
 class MarketProvider extends ChangeNotifier {
-  static const _defaultAccountBalanceUsd = 10000.0;
+  static const _defaultAccountBalanceUsdt = 10000.0;
+  // TODO(dj681): Replace this fixed fallback with a live FX feed for EUR display.
+  // Fixed fallback rate used for UI-only conversion while no FX feed exists yet
+  // (set in April 2026).
+  static const _usdtToEurRate = 0.92;
   // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
 
   MarketProvider({
     required MarketService marketService,
-    double initialAccountBalanceUsd = _defaultAccountBalanceUsd,
+    double initialAccountBalanceUsdt = _defaultAccountBalanceUsdt,
   })  : _marketService = marketService,
-        _accountBalanceUsd = initialAccountBalanceUsd;
+        _accountBalanceUsdt = initialAccountBalanceUsdt;
 
   final MarketService _marketService;
 
@@ -49,7 +53,7 @@ class MarketProvider extends ChangeNotifier {
   MarketStatus _realAssetsStatus = MarketStatus.idle;
   String? _cryptoError;
   String? _realAssetsError;
-  double _accountBalanceUsd;
+  double _accountBalanceUsdt;
   final Map<String, double> _positions = {};
   final List<TradeOrder> _orders = [];
 
@@ -59,7 +63,8 @@ class MarketProvider extends ChangeNotifier {
   MarketStatus get realAssetsStatus => _realAssetsStatus;
   String? get error => _cryptoError;
   String? get realAssetsError => _realAssetsError;
-  double get accountBalanceUsd => _accountBalanceUsd;
+  double get accountBalanceUsdt => _accountBalanceUsdt;
+  double get accountBalanceEur => _accountBalanceUsdt * _usdtToEurRate;
   List<TradeOrder> get orders => List.unmodifiable(_orders);
   bool get isLoading => _cryptoStatus == MarketStatus.loading;
   bool get isRealAssetsLoading => _realAssetsStatus == MarketStatus.loading;
@@ -96,16 +101,16 @@ class MarketProvider extends ChangeNotifier {
     final currentPosition = _positions[key] ?? 0;
 
     if (side == TradeSide.buy) {
-      if (total > _accountBalanceUsd) {
+      if (total > _accountBalanceUsdt) {
         throw StateError('Solde insuffisant pour cet achat.');
       }
-      _accountBalanceUsd -= total;
+      _accountBalanceUsdt -= total;
       _positions[key] = currentPosition + quantity;
     } else {
       if (quantity > currentPosition) {
         throw StateError('Position insuffisante pour cette vente.');
       }
-      _accountBalanceUsd += total;
+      _accountBalanceUsdt += total;
       final remaining = currentPosition - quantity;
       if (remaining.abs() < _positionEpsilon) {
         _positions.remove(key);
