@@ -251,14 +251,19 @@ class _AccueilTab extends StatelessWidget {
         marketProvider.tickers.take(_marketPreviewItemCount).toList();
 
     return RefreshIndicator(
-      onRefresh: () => blockchainProvider.refreshBalance(wallet.address),
+      onRefresh: () async {
+        await Future.wait([
+          blockchainProvider.refreshBalance(wallet.address),
+          marketProvider.refreshMarket(),
+        ]);
+      },
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           BalanceCard(
             address: wallet.address,
-            blockchainProvider: blockchainProvider,
-            onRefresh: onRefreshBalance,
+            marketProvider: marketProvider,
+            onRefresh: onRefreshMarket,
           ),
           const SizedBox(height: 24),
           Row(
