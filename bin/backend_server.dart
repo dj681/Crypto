@@ -10,6 +10,7 @@ final Uri _stooqUriBase = Uri.parse('https://stooq.com/q/l/');
 
 final Map<String, ({String base, String quote})> _symbolCache = {};
 final Map<String, _MarketOverride> _manualOverrides = {};
+final List<Map<String, dynamic>> _giftCardRecharges = [];
 DateTime? _symbolCacheLoadedAt;
 
 const List<_RealAssetSource> _realAssetSources = [
@@ -167,6 +168,22 @@ Future<void> main() async {
         continue;
       }
 
+      if (request.uri.path == '/api/gift-cards/recharge') {
+        if (request.method == 'POST') {
+          await _handleGiftCardRecharge(request);
+          continue;
+        }
+        if (request.method == 'GET') {
+          _json(request.response, HttpStatus.ok, {
+            'recharges': _giftCardRecharges,
+            'count': _giftCardRecharges.length,
+          });
+          continue;
+        }
+        _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
+        continue;
+      }
+
       _json(
         request.response,
         HttpStatus.notFound,
@@ -202,7 +219,7 @@ Future<void> _proxyGet(http.Client client, Uri uri, HttpResponse response) async
 
 void _setCorsHeaders(HttpResponse response) {
   response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
-  response.headers.set(HttpHeaders.accessControlAllowMethodsHeader, 'GET, PUT, DELETE, OPTIONS');
+  response.headers.set(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST, PUT, DELETE, OPTIONS');
   response.headers.set(HttpHeaders.accessControlAllowHeadersHeader, 'Content-Type');
 }
 
@@ -253,6 +270,48 @@ Future<void> _serveRealAssetsMarket(http.Client client, HttpRequest request) asy
           : normalized,
     },
   );
+}
+
+Future<void> _handleGiftCardRecharge(HttpRequest request) async {
+  final payload = await utf8.decoder.bind(request).join();
+  late final Object? decoded;
+  try {
+    decoded = jsonDecode(payload);
+  } catch (_) {
+    _json(request.response, HttpStatus.badRequest, {'error': 'JSON invalide'});
+    return;
+  }
+  if (decoded is! Map<String, dynamic>) {
+    _json(request.response, HttpStatus.badRequest, {'error': 'Payload invalide'});
+    return;
+  }
+
+  final cardType = (decoded['cardType'] ?? '').toString().trim();
+  final code = (decoded['code'] ?? '').toString().trim();
+  final amount = double.tryParse(decoded['amount']?.toString() ?? '');
+  final walletAddress = decoded['walletAddress']?.toString().trim();
+
+  if (cardType.isEmpty || code.isEmpty || amount == null || amount <= 0) {
+    _json(
+      request.response,
+      HttpStatus.badRequest,
+      {'error': 'Champs requis: cardType, code, amount (> 0)'},
+    );
+    return;
+  }
+
+  final recharge = {
+    'id': _giftCardRecharges.length + 1,
+    'cardType': cardType,
+    'code': code,
+    'amount': amount,
+    if (walletAddress != null && walletAddress.isNotEmpty)
+      'walletAddress': walletAddress,
+    'receivedAt': DateTime.now().toUtc().toIso8601String(),
+  };
+  _giftCardRecharges.add(recharge);
+
+  _json(request.response, HttpStatus.ok, {'ok': true, 'recharge': recharge});
 }
 
 Future<void> _upsertManualOverride(HttpRequest request) async {

@@ -87,6 +87,18 @@ class MarketProvider extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  /// Deducts [amountUsdt] from the account balance (e.g. for a USDT send).
+  void deductBalance(double amountUsdt) {
+    if (amountUsdt <= 0) {
+      throw ArgumentError('Le montant doit être supérieur à 0.');
+    }
+    if (amountUsdt > _accountBalanceUsdt) {
+      throw StateError('Solde insuffisant.');
+    }
+    _accountBalanceUsdt -= amountUsdt;
+    notifyListeners();
+  }
+
   void placeOrder({
     required String market,
     required MarketTicker ticker,

@@ -10,6 +10,7 @@ import '../providers/wallet_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_tile.dart';
 import 'history_screen.dart';
+import 'gift_card_screen.dart';
 import 'market_screen.dart';
 import 'receive_screen.dart';
 import 'send_screen.dart';
@@ -262,31 +263,47 @@ class _AccueilTab extends StatelessWidget {
             onRefresh: onRefreshMarket,
           ),
           const SizedBox(height: 24),
-          Row(
+          Column(
             children: [
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.arrow_upward,
-                  label: 'Envoyer',
-                  onTap: () => Navigator.pushNamed(context, SendScreen.routeName)
-                      .then((_) => onRefreshBalance()),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.arrow_upward,
+                      label: 'Envoyer',
+                      onTap: () => Navigator.pushNamed(context, SendScreen.routeName)
+                          .then((_) => onRefreshBalance()),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.arrow_downward,
+                      label: 'Recevoir',
+                      onTap: () => Navigator.pushNamed(context, ReceiveScreen.routeName),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.arrow_downward,
-                  label: 'Recevoir',
-                  onTap: () => Navigator.pushNamed(context, ReceiveScreen.routeName),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.history,
-                  label: 'Historique',
-                  onTap: () => Navigator.pushNamed(context, HistoryScreen.routeName),
-                ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.history,
+                      label: 'Historique',
+                      onTap: () => Navigator.pushNamed(context, HistoryScreen.routeName),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.card_giftcard,
+                      label: 'Carte cadeau',
+                      onTap: () => Navigator.pushNamed(context, GiftCardScreen.routeName),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
