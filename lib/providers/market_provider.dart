@@ -31,11 +31,13 @@ class TradeOrder {
 }
 
 class MarketProvider extends ChangeNotifier {
+  static const _defaultAccountBalanceUsd = 10000.0;
+  // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
 
   MarketProvider({
     required MarketService marketService,
-    double initialAccountBalanceUsd = 10000,
+    double initialAccountBalanceUsd = _defaultAccountBalanceUsd,
   })  : _marketService = marketService,
         _accountBalanceUsd = initialAccountBalanceUsd;
 
