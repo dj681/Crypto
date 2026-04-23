@@ -42,11 +42,11 @@ class _SendScreenState extends State<SendScreen> {
 
       marketProvider.deductBalance(amount);
 
-      final txHash =
+      final transferId =
           'usdt-${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}';
       await walletProvider.appendTransaction(
         TxRecord(
-          txHash: txHash,
+          txHash: transferId,
           from: wallet.address,
           to: _toController.text.trim(),
           valueEth: amount,

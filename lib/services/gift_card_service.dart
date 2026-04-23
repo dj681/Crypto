@@ -88,7 +88,11 @@ class GiftCardService {
 
   Uri get _rechargeUri {
     final base = _backendUri;
-    if (base == null) return Uri.parse('http://localhost:8080/api/gift-cards/recharge');
+    if (base == null) {
+      throw StateError(
+        'BACKEND_URL non configuré. Définissez --dart-define=BACKEND_URL pour activer la recharge.',
+      );
+    }
     final basePath = base.path.endsWith('/')
         ? base.path.substring(0, base.path.length - 1)
         : base.path;
@@ -120,8 +124,9 @@ class GiftCardService {
         .timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200 && response.statusCode != 201) {
+      final detail = response.body.isNotEmpty ? ' — ${response.body}' : '';
       throw StateError(
-          'Erreur backend carte cadeau (${response.statusCode})');
+          'Erreur backend carte cadeau (${response.statusCode})$detail');
     }
   }
 }
