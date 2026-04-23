@@ -23,7 +23,7 @@ class GiftCardType {
   final String example;
 }
 
-const List<GiftCardType> giftCardTypes = [
+final List<GiftCardType> giftCardTypes = [
   GiftCardType(
     name: 'Apple / iTunes',
     hintText: 'XXXX-XXXX-XXXX-XXXX',
@@ -56,16 +56,16 @@ const List<GiftCardType> giftCardTypes = [
   ),
 ];
 
-// RegExp constants (top-level so const GiftCardType can reference them).
-const RegExp _applePattern =
+// RegExp patterns (top-level so GiftCardType can reference them).
+final RegExp _applePattern =
     RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
-const RegExp _googlePattern =
+final RegExp _googlePattern =
     RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
-const RegExp _amazonPattern =
+final RegExp _amazonPattern =
     RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{6}-[A-Z0-9]{4}$');
-const RegExp _steamPattern =
+final RegExp _steamPattern =
     RegExp(r'^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$');
-const RegExp _paysafecardPattern =
+final RegExp _paysafecardPattern =
     RegExp(r'^\d{4}-\d{4}-\d{4}-\d{4}$');
 
 class GiftCardService {
