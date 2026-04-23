@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/blockchain_provider.dart';
+import '../models/tx_record.dart';
+import '../providers/market_provider.dart';
 import '../providers/wallet_provider.dart';
 
 class SendScreen extends StatefulWidget {
@@ -34,20 +35,32 @@ class _SendScreenState extends State<SendScreen> {
 
     setState(() => _isSending = true);
     try {
-      final wallet = context.read<WalletProvider>().wallet!;
-      final txHash = await context.read<BlockchainProvider>().sendEth(
-            fromAddress: wallet.address,
-            toAddress: _toController.text.trim(),
-            amountEth: double.parse(_amountController.text.trim()),
-          );
+      final marketProvider = context.read<MarketProvider>();
+      final walletProvider = context.read<WalletProvider>();
+      final wallet = walletProvider.wallet!;
+      final amount = double.parse(_amountController.text.trim());
 
-      // Reload history from storage (BlockchainProvider already persisted the tx).
-      await context.read<WalletProvider>().loadWallet();
+      marketProvider.deductBalance(amount);
+
+      final transferId =
+          'usdt-${DateTime.now().millisecondsSinceEpoch.toRadixString(16)}';
+      await walletProvider.appendTransaction(
+        TxRecord(
+          txHash: transferId,
+          from: wallet.address,
+          to: _toController.text.trim(),
+          valueEth: amount,
+          timestamp: DateTime.now(),
+          status: TxStatus.confirmed,
+        ),
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Transaction envoyée !\nHash: ${txHash.substring(0, 20)}…'),
+          content: Text(
+            'Envoi de ${amount.toStringAsFixed(2)} USDT effectué !',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -71,8 +84,8 @@ class _SendScreenState extends State<SendScreen> {
           builder: (ctx) => AlertDialog(
             title: const Text("Confirmer l'envoi"),
             content: Text(
-              'Envoyer ${_amountController.text.trim()} ETH vers '
-              '${_toController.text.trim()}?',
+              'Envoyer ${_amountController.text.trim()} USDT vers '
+              '${_toController.text.trim()} ?',
             ),
             actions: [
               TextButton(
@@ -91,10 +104,12 @@ class _SendScreenState extends State<SendScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bp = context.watch<BlockchainProvider>();
+    final mp = context.watch<MarketProvider>();
+    final balanceUsdt = mp.accountBalanceUsdt;
+    final balanceEur = mp.accountBalanceEur;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Envoyer ETH')),
+      appBar: AppBar(title: const Text('Envoyer USDT')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -102,16 +117,32 @@ class _SendScreenState extends State<SendScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (bp.balance != null)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Solde disponible: ${bp.balance!.toStringAsFixed(6)} ETH',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Solde disponible',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${balanceUsdt.toStringAsFixed(2)} USDT',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${balanceEur.toStringAsFixed(2)} EUR',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
                   ),
                 ),
+              ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _toController,
@@ -135,10 +166,11 @@ class _SendScreenState extends State<SendScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
-                  labelText: 'Montant (ETH)',
-                  hintText: '0.01',
+                  labelText: 'Montant (USDT)',
+                  hintText: '10.00',
                   prefixIcon: Icon(Icons.monetization_on_outlined),
                   border: OutlineInputBorder(),
                 ),
@@ -146,18 +178,10 @@ class _SendScreenState extends State<SendScreen> {
                   if (v == null || v.trim().isEmpty) return 'Montant requis';
                   final amount = double.tryParse(v.trim());
                   if (amount == null || amount <= 0) return 'Montant invalide';
-                  if (bp.balance != null && amount > bp.balance!) {
-                    return 'Solde insuffisant';
-                  }
+                  if (amount > balanceUsdt) return 'Solde insuffisant';
                   return null;
                 },
               ),
-              const SizedBox(height: 8),
-              if (bp.gasPrice != null)
-                Text(
-                  'Frais de réseau estimés: ${bp.gasPrice!.toStringAsFixed(2)} Gwei',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
                 onPressed: _isSending ? null : _send,
