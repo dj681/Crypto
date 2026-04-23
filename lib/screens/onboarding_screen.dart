@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -30,9 +31,16 @@ class OnboardingScreen extends StatelessWidget {
   }
 
   Future<void> _openExternalLink(BuildContext context, Uri uri) async {
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!context.mounted) return;
-    if (launched) return;
+    try {
+      final mode =
+          kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication;
+      final launched = await launchUrl(uri, mode: mode);
+      if (!context.mounted) return;
+      if (launched) return;
+    } catch (e) {
+      debugPrint('PWA launch error: $e');
+      if (!context.mounted) return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Impossible d’ouvrir le lien.')),
     );
