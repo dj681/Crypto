@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import '../models/market_ticker.dart';
 import '../providers/market_provider.dart';
 
+// Compiled once; reused on every format call to avoid repeated JS regex compilation.
+final _trailingZerosPattern = RegExp(r'\.?0+$');
+
 String _formatMarketPrice(double value) {
   final precision = value >= 1000
       ? 2
@@ -16,7 +19,7 @@ String _formatMarketPrice(double value) {
               : 8;
   var formatted = value.toStringAsFixed(precision);
   if (formatted.contains('.')) {
-    formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+    formatted = formatted.replaceFirst(_trailingZerosPattern, '');
   }
   return formatted;
 }
@@ -24,7 +27,7 @@ String _formatMarketPrice(double value) {
 String _formatAmount(double value, {int maxFractionDigits = 6}) {
   var formatted = value.toStringAsFixed(maxFractionDigits);
   if (formatted.contains('.')) {
-    formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+    formatted = formatted.replaceFirst(_trailingZerosPattern, '');
   }
   return formatted;
 }
@@ -296,25 +299,34 @@ class _CryptoMarketViewState extends State<CryptoMarketView> {
                 widget.contentPadding.right,
                 widget.contentPadding.bottom,
               ),
-              sliver: SliverList.builder(
-                itemCount: tickers.length,
-                itemBuilder: (context, index) {
-                  final ticker = tickers[index];
-                  final orders = marketProvider.ordersFor(
-                    market: 'crypto',
-                    symbol: ticker.symbol,
-                  );
-                  final buyCount =
-                      orders.where((order) => order.side == TradeSide.buy).length;
-                  final sellCount =
-                      orders.where((order) => order.side == TradeSide.sell).length;
-
-                  return _MarketTickerCard(
-                    ticker: ticker,
-                    buyCount: buyCount,
-                    sellCount: sellCount,
-                    onBuy: () => _openTradeSheet(ticker, initialSide: TradeSide.buy),
-                    onSell: () => _openTradeSheet(ticker, initialSide: TradeSide.sell),
+              sliver: Builder(
+                builder: (context) {
+                  // Build order-count map once per rebuild (O(m)) instead of
+                  // calling ordersFor + two .where() passes per item (O(n×m)).
+                  final orderCounts = <String, ({int buy, int sell})>{};
+                  for (final order in marketProvider.orders) {
+                    if (order.market != 'crypto') continue;
+                    final c = orderCounts[order.symbol] ?? (buy: 0, sell: 0);
+                    orderCounts[order.symbol] = order.side == TradeSide.buy
+                        ? (buy: c.buy + 1, sell: c.sell)
+                        : (buy: c.buy, sell: c.sell + 1);
+                  }
+                  return SliverList.builder(
+                    itemCount: tickers.length,
+                    itemBuilder: (context, index) {
+                      final ticker = tickers[index];
+                      final counts =
+                          orderCounts[ticker.symbol] ?? (buy: 0, sell: 0);
+                      return _MarketTickerCard(
+                        ticker: ticker,
+                        buyCount: counts.buy,
+                        sellCount: counts.sell,
+                        onBuy: () =>
+                            _openTradeSheet(ticker, initialSide: TradeSide.buy),
+                        onSell: () => _openTradeSheet(
+                            ticker, initialSide: TradeSide.sell),
+                      );
+                    },
                   );
                 },
               ),
@@ -473,26 +485,35 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
                 widget.contentPadding.right,
                 widget.contentPadding.bottom,
               ),
-              sliver: SliverList.builder(
-                itemCount: assets.length,
-                itemBuilder: (context, index) {
-                  final asset = assets[index];
-                  final orders = marketProvider.ordersFor(
-                    market: 'real-assets',
-                    symbol: asset.symbol,
-                  );
-                  final buyCount =
-                      orders.where((order) => order.side == TradeSide.buy).length;
-                  final sellCount =
-                      orders.where((order) => order.side == TradeSide.sell).length;
-
-                  return _RealAssetTickerCard(
-                    ticker: asset,
-                    buyCount: buyCount,
-                    sellCount: sellCount,
-                    formatPrice: _formatMarketPrice,
-                    onBuy: () => _openTradeSheet(asset, initialSide: TradeSide.buy),
-                    onSell: () => _openTradeSheet(asset, initialSide: TradeSide.sell),
+              sliver: Builder(
+                builder: (context) {
+                  // Build order-count map once per rebuild (O(m)) instead of
+                  // calling ordersFor + two .where() passes per item (O(n×m)).
+                  final orderCounts = <String, ({int buy, int sell})>{};
+                  for (final order in marketProvider.orders) {
+                    if (order.market != 'real-assets') continue;
+                    final c = orderCounts[order.symbol] ?? (buy: 0, sell: 0);
+                    orderCounts[order.symbol] = order.side == TradeSide.buy
+                        ? (buy: c.buy + 1, sell: c.sell)
+                        : (buy: c.buy, sell: c.sell + 1);
+                  }
+                  return SliverList.builder(
+                    itemCount: assets.length,
+                    itemBuilder: (context, index) {
+                      final asset = assets[index];
+                      final counts =
+                          orderCounts[asset.symbol] ?? (buy: 0, sell: 0);
+                      return _RealAssetTickerCard(
+                        ticker: asset,
+                        buyCount: counts.buy,
+                        sellCount: counts.sell,
+                        formatPrice: _formatMarketPrice,
+                        onBuy: () =>
+                            _openTradeSheet(asset, initialSide: TradeSide.buy),
+                        onSell: () =>
+                            _openTradeSheet(asset, initialSide: TradeSide.sell),
+                      );
+                    },
                   );
                 },
               ),
