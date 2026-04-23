@@ -38,7 +38,7 @@ String _formatDateTime(DateTime dateTime) {
   return '$d/$m/$y $h:$min';
 }
 
-double? _findEthQuotePrice(List<MarketTicker> tickers) {
+double? _findEthPriceInUsdt(List<MarketTicker> tickers) {
   for (final ticker in tickers) {
     final isEth = ticker.baseAsset.toUpperCase() == 'ETH';
     final isUsdQuote = ticker.quoteAsset.toUpperCase() == 'USD' ||
@@ -96,9 +96,10 @@ class _TraderMarketViewState extends State<TraderMarketView> {
     final marketProvider = context.watch<MarketProvider>();
     final accountBalanceUsdt = marketProvider.accountBalanceUsdt;
     final accountBalanceEur = marketProvider.accountBalanceEur;
-    final ethQuotePrice = _findEthQuotePrice(marketProvider.tickers);
-    final accountBalanceEth =
-        ethQuotePrice != null ? accountBalanceUsdt / ethQuotePrice : null;
+    final ethQuotePrice = _findEthPriceInUsdt(marketProvider.tickers);
+    final accountBalanceEth = ethQuotePrice != null && ethQuotePrice > 0
+        ? accountBalanceUsdt / ethQuotePrice
+        : null;
     return Column(
       children: [
         Padding(

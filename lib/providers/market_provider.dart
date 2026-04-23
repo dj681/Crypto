@@ -32,6 +32,7 @@ class TradeOrder {
 
 class MarketProvider extends ChangeNotifier {
   static const _defaultAccountBalanceUsdt = 10000.0;
+  // Fixed fallback rate used for UI-only conversion while no FX feed exists yet.
   static const _usdtToEurRate = 0.92;
   // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
