@@ -42,6 +42,44 @@ class _MarketScreenState extends State<MarketScreen> {
   }
 }
 
+const List<_RealAssetTicker> _realAssetCatalog = [
+  _RealAssetTicker(
+    symbol: 'XAU',
+    name: 'Or',
+    unit: 'oz',
+    lastPrice: 2388.42,
+    priceChangePercent: 0.87,
+  ),
+  _RealAssetTicker(
+    symbol: 'XBR',
+    name: 'Pétrole Brent',
+    unit: 'baril',
+    lastPrice: 83.16,
+    priceChangePercent: -0.42,
+  ),
+  _RealAssetTicker(
+    symbol: 'XTI',
+    name: 'Pétrole WTI',
+    unit: 'baril',
+    lastPrice: 79.95,
+    priceChangePercent: -0.35,
+  ),
+  _RealAssetTicker(
+    symbol: 'XAG',
+    name: 'Argent',
+    unit: 'oz',
+    lastPrice: 28.74,
+    priceChangePercent: 0.65,
+  ),
+  _RealAssetTicker(
+    symbol: 'DIA',
+    name: 'Diamant',
+    unit: 'ct',
+    lastPrice: 1265.30,
+    priceChangePercent: 0.18,
+  ),
+];
+
 enum TraderMarketType { crypto, realAssets }
 
 class TraderMarketView extends StatefulWidget {
@@ -281,51 +319,13 @@ class RealAssetsMarketView extends StatefulWidget {
 }
 
 class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
-  static const List<_RealAssetTicker> _realAssets = [
-    _RealAssetTicker(
-      symbol: 'XAU',
-      name: 'Or',
-      unit: 'oz',
-      lastPrice: 2388.42,
-      priceChangePercent: 0.87,
-    ),
-    _RealAssetTicker(
-      symbol: 'XBR',
-      name: 'Pétrole Brent',
-      unit: 'baril',
-      lastPrice: 83.16,
-      priceChangePercent: -0.42,
-    ),
-    _RealAssetTicker(
-      symbol: 'XTI',
-      name: 'Pétrole WTI',
-      unit: 'baril',
-      lastPrice: 79.95,
-      priceChangePercent: -0.35,
-    ),
-    _RealAssetTicker(
-      symbol: 'XAG',
-      name: 'Argent',
-      unit: 'oz',
-      lastPrice: 28.74,
-      priceChangePercent: 0.65,
-    ),
-    _RealAssetTicker(
-      symbol: 'DIA',
-      name: 'Diamant',
-      unit: 'ct',
-      lastPrice: 1265.30,
-      priceChangePercent: 0.18,
-    ),
-  ];
-
   String _query = '';
-  final Map<String, int> _buyPositions = {};
-  final Map<String, int> _sellPositions = {};
+  final Map<String, int> _sessionBuyPositions = {};
+  final Map<String, int> _sessionSellPositions = {};
 
   void _takePosition(_RealAssetTicker ticker, {required bool isBuy}) {
     setState(() {
-      final target = isBuy ? _buyPositions : _sellPositions;
+      final target = isBuy ? _sessionBuyPositions : _sessionSellPositions;
       target[ticker.symbol] = (target[ticker.symbol] ?? 0) + 1;
     });
     final sideText = isBuy ? 'achat' : 'vente';
@@ -338,8 +338,8 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
   Widget build(BuildContext context) {
     final query = _query.trim().toUpperCase();
     final assets = query.isEmpty
-        ? _realAssets
-        : _realAssets
+        ? _realAssetCatalog
+        : _realAssetCatalog
             .where((asset) =>
                 asset.symbol.contains(query) || asset.name.toUpperCase().contains(query))
             .toList(growable: false);
@@ -357,7 +357,7 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Données de prix indicatives. Positions suivies localement sur cette session.',
+                  'Prix indicatifs. Positions suivies localement sur cette session.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
@@ -405,8 +405,8 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
                 final asset = assets[index];
                 return _RealAssetTickerCard(
                   ticker: asset,
-                  buyPositions: _buyPositions[asset.symbol] ?? 0,
-                  sellPositions: _sellPositions[asset.symbol] ?? 0,
+                  buyPositions: _sessionBuyPositions[asset.symbol] ?? 0,
+                  sellPositions: _sessionSellPositions[asset.symbol] ?? 0,
                   formatPrice: _formatMarketPrice,
                   onBuy: () => _takePosition(asset, isBuy: true),
                   onSell: () => _takePosition(asset, isBuy: false),
