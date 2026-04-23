@@ -1,6 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/market_ticker.dart';
 import '../providers/market_provider.dart';
@@ -18,6 +19,23 @@ String _formatMarketPrice(double value) {
     formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
   }
   return formatted;
+}
+
+String _formatAmount(double value, {int maxFractionDigits = 6}) {
+  var formatted = value.toStringAsFixed(maxFractionDigits);
+  if (formatted.contains('.')) {
+    formatted = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+  }
+  return formatted;
+}
+
+String _formatDateTime(DateTime dateTime) {
+  final d = dateTime.day.toString().padLeft(2, '0');
+  final m = dateTime.month.toString().padLeft(2, '0');
+  final y = dateTime.year.toString();
+  final h = dateTime.hour.toString().padLeft(2, '0');
+  final min = dateTime.minute.toString().padLeft(2, '0');
+  return '$d/$m/$y $h:$min';
 }
 
 class MarketScreen extends StatefulWidget {
@@ -63,6 +81,7 @@ class _TraderMarketViewState extends State<TraderMarketView> {
 
   @override
   Widget build(BuildContext context) {
+    final marketProvider = context.watch<MarketProvider>();
     return Column(
       children: [
         Padding(
@@ -76,6 +95,26 @@ class _TraderMarketViewState extends State<TraderMarketView> {
                 ),
                 const SizedBox(height: 12),
               ],
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet_outlined),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Solde disponible compte: '
+                          '${_formatAmount(marketProvider.accountBalanceUsd, maxFractionDigits: 2)} USD',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<TraderMarketType>(
@@ -103,7 +142,7 @@ class _TraderMarketViewState extends State<TraderMarketView> {
         ),
         Expanded(
           child: _selectedMarket == TraderMarketType.crypto
-              ? BinanceMarketView(
+              ? CryptoMarketView(
                   contentPadding: widget.contentPadding.copyWith(top: 8),
                   showIntroText: false,
                 )
@@ -116,8 +155,8 @@ class _TraderMarketViewState extends State<TraderMarketView> {
   }
 }
 
-class BinanceMarketView extends StatefulWidget {
-  const BinanceMarketView({
+class CryptoMarketView extends StatefulWidget {
+  const CryptoMarketView({
     super.key,
     required this.contentPadding,
     this.showIntroText = false,
@@ -127,10 +166,10 @@ class BinanceMarketView extends StatefulWidget {
   final bool showIntroText;
 
   @override
-  State<BinanceMarketView> createState() => _BinanceMarketViewState();
+  State<CryptoMarketView> createState() => _CryptoMarketViewState();
 }
 
-class _BinanceMarketViewState extends State<BinanceMarketView> {
+class _CryptoMarketViewState extends State<CryptoMarketView> {
   String _query = '';
 
   @override
@@ -139,22 +178,26 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final marketProvider = context.read<MarketProvider>();
-      // Skip auto-refresh if data is already loaded or a fetch is in progress.
-      // Users can still trigger a manual refresh via pull-to-refresh.
       if (marketProvider.isLoading || marketProvider.tickers.isNotEmpty) return;
       marketProvider.refreshMarket();
     });
   }
 
-  Future<void> _openBinanceTrade(MarketTicker ticker, {required bool isBuy}) async {
-    final sideText = isBuy ? 'achat' : 'vente';
-    final uri = Uri.parse(
-      'https://www.binance.com/en/trade/${ticker.baseAsset}_${ticker.quoteAsset}?type=spot',
-    );
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted || launched) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Impossible d’ouvrir Binance pour $sideText.')),
+  Future<void> _openTradeSheet(
+    MarketTicker ticker, {
+    required TradeSide initialSide,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: _TradeComposerSheet(
+          market: 'crypto',
+          ticker: ticker,
+          initialSide: initialSide,
+        ),
+      ),
     );
   }
 
@@ -179,7 +222,6 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
       onRefresh: marketProvider.refreshMarket,
       child: CustomScrollView(
         slivers: [
-          // Header: intro text, search field, status/count.
           SliverToBoxAdapter(
             child: Padding(
               padding: widget.contentPadding.copyWith(bottom: 0),
@@ -221,8 +263,8 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
                         child: Text(
                           marketProvider.error ?? 'Erreur de chargement.',
                           style: TextStyle(
-                              color:
-                                  Theme.of(context).colorScheme.onErrorContainer),
+                            color: Theme.of(context).colorScheme.onErrorContainer,
+                          ),
                         ),
                       ),
                     )
@@ -230,7 +272,8 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
                     const Padding(
                       padding: EdgeInsets.only(top: 48),
                       child: Center(
-                          child: Text('Aucune donnée de marché disponible.')),
+                        child: Text('Aucune donnée de marché disponible.'),
+                      ),
                     )
                   else
                     Padding(
@@ -241,7 +284,6 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
               ),
             ),
           ),
-          // Ticker list: lazily rendered with SliverList.builder.
           if (showList)
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
@@ -254,10 +296,21 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
                 itemCount: tickers.length,
                 itemBuilder: (context, index) {
                   final ticker = tickers[index];
+                  final orders = marketProvider.ordersFor(
+                    market: 'crypto',
+                    symbol: ticker.symbol,
+                  );
+                  final buyCount =
+                      orders.where((order) => order.side == TradeSide.buy).length;
+                  final sellCount =
+                      orders.where((order) => order.side == TradeSide.sell).length;
+
                   return _MarketTickerCard(
                     ticker: ticker,
-                    onBuy: () => _openBinanceTrade(ticker, isBuy: true),
-                    onSell: () => _openBinanceTrade(ticker, isBuy: false),
+                    buyCount: buyCount,
+                    sellCount: sellCount,
+                    onBuy: () => _openTradeSheet(ticker, initialSide: TradeSide.buy),
+                    onSell: () => _openTradeSheet(ticker, initialSide: TradeSide.sell),
                   );
                 },
               ),
@@ -282,8 +335,6 @@ class RealAssetsMarketView extends StatefulWidget {
 
 class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
   String _query = '';
-  final Map<String, int> _sessionBuyPositions = {};
-  final Map<String, int> _sessionSellPositions = {};
 
   static const Map<String, ({String name, String unit})> _realAssetsMetadata = {
     'XAUUSD': (name: 'Or', unit: 'oz'),
@@ -306,14 +357,21 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
     });
   }
 
-  void _takePosition(_RealAssetTicker ticker, {required bool isBuy}) {
-    setState(() {
-      final target = isBuy ? _sessionBuyPositions : _sessionSellPositions;
-      target[ticker.symbol] = (target[ticker.symbol] ?? 0) + 1;
-    });
-    final sideText = isBuy ? 'achat' : 'vente';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Position de $sideText ouverte sur ${ticker.name}.')),
+  Future<void> _openTradeSheet(
+    MarketTicker ticker, {
+    required TradeSide initialSide,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: _TradeComposerSheet(
+          market: 'real-assets',
+          ticker: ticker,
+          initialSide: initialSide,
+        ),
+      ),
     );
   }
 
@@ -328,7 +386,8 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
         ? allAssets
         : allAssets
             .where((asset) =>
-                asset.symbol.contains(query) || asset.name.toUpperCase().contains(query))
+                asset.symbol.contains(query) ||
+                (asset.name ?? '').toUpperCase().contains(query))
             .toList(growable: false);
     final showList = !marketProvider.isRealAssetsLoading &&
         marketProvider.realAssetsStatus != MarketStatus.error &&
@@ -337,119 +396,485 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
     return RefreshIndicator(
       onRefresh: marketProvider.refreshRealAssetsMarket,
       child: CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: widget.contentPadding.copyWith(bottom: 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Actifs réels disponibles avec cotations backend en temps réel.',
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Vous pouvez surcharger les prix côté backend pour ajuster manuellement les valeurs.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () => setState(() => _query = ''),
-                            icon: const Icon(Icons.close),
-                            tooltip: 'Effacer',
-                          ),
-                    hintText: 'Rechercher un actif réel (or, pétrole, diamant...)',
-                    border: const OutlineInputBorder(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: widget.contentPadding.copyWith(bottom: 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Actifs réels disponibles avec cotations backend en temps réel.',
                   ),
-                  onChanged: (value) => setState(() => _query = value),
-                ),
-                const SizedBox(height: 8),
-                if (marketProvider.isRealAssetsLoading &&
-                    marketProvider.realAssetTickers.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 48),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (marketProvider.realAssetsStatus == MarketStatus.error)
-                  Card(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        marketProvider.realAssetsError ?? 'Erreur de chargement.',
-                        style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onErrorContainer),
-                      ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Vous pouvez surcharger les prix côté backend pour ajuster manuellement les valeurs.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () => setState(() => _query = ''),
+                              icon: const Icon(Icons.close),
+                              tooltip: 'Effacer',
+                            ),
+                      hintText: 'Rechercher un actif réel (or, pétrole, diamant...)',
+                      border: const OutlineInputBorder(),
                     ),
-                  )
-                else if (!showList)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 48),
-                    child: Center(child: Text('Aucun actif réel trouvé.')),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text('${assets.length} actifs affichés'),
+                    onChanged: (value) => setState(() => _query = value),
                   ),
-              ],
+                  const SizedBox(height: 8),
+                  if (marketProvider.isRealAssetsLoading &&
+                      marketProvider.realAssetTickers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 48),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (marketProvider.realAssetsStatus == MarketStatus.error)
+                    Card(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          marketProvider.realAssetsError ?? 'Erreur de chargement.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (!showList)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 48),
+                      child: Center(child: Text('Aucun actif réel trouvé.')),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text('${assets.length} actifs affichés'),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        if (showList)
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              widget.contentPadding.left,
-              0,
-              widget.contentPadding.right,
-              widget.contentPadding.bottom,
+          if (showList)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                widget.contentPadding.left,
+                0,
+                widget.contentPadding.right,
+                widget.contentPadding.bottom,
+              ),
+              sliver: SliverList.builder(
+                itemCount: assets.length,
+                itemBuilder: (context, index) {
+                  final asset = assets[index];
+                  final orders = marketProvider.ordersFor(
+                    market: 'real-assets',
+                    symbol: asset.symbol,
+                  );
+                  final buyCount =
+                      orders.where((order) => order.side == TradeSide.buy).length;
+                  final sellCount =
+                      orders.where((order) => order.side == TradeSide.sell).length;
+
+                  return _RealAssetTickerCard(
+                    ticker: asset,
+                    buyCount: buyCount,
+                    sellCount: sellCount,
+                    formatPrice: _formatMarketPrice,
+                    onBuy: () => _openTradeSheet(asset, initialSide: TradeSide.buy),
+                    onSell: () => _openTradeSheet(asset, initialSide: TradeSide.sell),
+                  );
+                },
+              ),
             ),
-            sliver: SliverList.builder(
-              itemCount: assets.length,
-              itemBuilder: (context, index) {
-                final asset = assets[index];
-                return _RealAssetTickerCard(
-                  ticker: asset,
-                  buyPositions: _sessionBuyPositions[asset.symbol] ?? 0,
-                  sellPositions: _sessionSellPositions[asset.symbol] ?? 0,
-                  formatPrice: _formatMarketPrice,
-                  onBuy: () => _takePosition(asset, isBuy: true),
-                  onSell: () => _takePosition(asset, isBuy: false),
-                );
-              },
-            ),
-          ),
-      ],
+        ],
       ),
     );
   }
 
-  _RealAssetTicker _toDisplayTicker(MarketTicker ticker) {
+  MarketTicker _toDisplayTicker(MarketTicker ticker) {
     final metadata = _realAssetsMetadata[ticker.symbol];
-    return _RealAssetTicker(
+    return MarketTicker(
       symbol: ticker.symbol,
-      name: ticker.name ?? metadata?.name ?? ticker.baseAsset,
-      unit: ticker.unit ?? metadata?.unit ?? 'unité',
+      baseAsset: ticker.baseAsset,
+      quoteAsset: ticker.quoteAsset,
       lastPrice: ticker.lastPrice,
       priceChangePercent: ticker.priceChangePercent,
+      quoteVolume: ticker.quoteVolume,
+      name: ticker.name ?? metadata?.name ?? ticker.baseAsset,
+      unit: ticker.unit ?? metadata?.unit ?? 'unité',
+      market: ticker.market ?? 'real-assets',
     );
+  }
+}
+
+class _TradeComposerSheet extends StatefulWidget {
+  const _TradeComposerSheet({
+    required this.market,
+    required this.ticker,
+    required this.initialSide,
+  });
+
+  final String market;
+  final MarketTicker ticker;
+  final TradeSide initialSide;
+
+  @override
+  State<_TradeComposerSheet> createState() => _TradeComposerSheetState();
+}
+
+class _TradeComposerSheetState extends State<_TradeComposerSheet> {
+  late TradeSide _selectedSide;
+  final TextEditingController _quantityController = TextEditingController(text: '1');
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSide = widget.initialSide;
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  List<double> _buildEvolutionSeries() {
+    final current = widget.ticker.lastPrice;
+    final ratio = 1 + (widget.ticker.priceChangePercent / 100);
+    final start = ratio <= 0 ? current : current / ratio;
+    final direction = current >= start ? 1 : -1;
+    final hash = widget.ticker.symbol.codeUnits.fold<int>(0, (acc, c) => acc + c);
+    final amplitude = math.max(current.abs() * 0.015, 0.0001);
+
+    return List<double>.generate(24, (index) {
+      final progress = index / 23;
+      final baseline = start + ((current - start) * progress);
+      final waveA = math.sin(progress * math.pi * 2) * amplitude;
+      final waveB = math.sin(progress * math.pi * 6 + hash) * amplitude * 0.35;
+      return math.max(0.00000001, baseline + ((waveA + waveB) * direction));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final marketProvider = context.watch<MarketProvider>();
+    final balance = marketProvider.accountBalanceUsd;
+    final position = marketProvider.getPosition(
+      market: widget.market,
+      symbol: widget.ticker.symbol,
+    );
+    final orders = marketProvider.ordersFor(
+      market: widget.market,
+      symbol: widget.ticker.symbol,
+    );
+
+    final quantity =
+        double.tryParse(_quantityController.text.trim().replaceAll(',', '.'));
+    final total = (quantity ?? 0) * widget.ticker.lastPrice;
+    final sideLabel = _selectedSide == TradeSide.buy ? 'Achat' : 'Vente';
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      minChildSize: 0.55,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${widget.ticker.baseAsset}/${widget.ticker.quoteAsset}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Fermer',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Prix actuel: ${_formatMarketPrice(widget.ticker.lastPrice)} ${widget.ticker.quoteAsset}',
+              ),
+              Text(
+                'Variation 24h: ${widget.ticker.priceChangePercent >= 0 ? '+' : ''}${widget.ticker.priceChangePercent.toStringAsFixed(2)}%',
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Évolution du marché (24h)',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 140,
+                        child: _EvolutionChart(
+                          values: _buildEvolutionSeries(),
+                          isPositive: widget.ticker.priceChangePercent >= 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Passer un ordre ($sideLabel)',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Solde disponible: ${_formatAmount(balance, maxFractionDigits: 2)} USD',
+                      ),
+                      Text(
+                        'Position ouverte: ${_formatAmount(position)} ${widget.ticker.baseAsset}',
+                      ),
+                      const SizedBox(height: 10),
+                      SegmentedButton<TradeSide>(
+                        segments: const [
+                          ButtonSegment(
+                            value: TradeSide.buy,
+                            label: Text('Acheter'),
+                            icon: Icon(Icons.add_shopping_cart_outlined),
+                          ),
+                          ButtonSegment(
+                            value: TradeSide.sell,
+                            label: Text('Vendre'),
+                            icon: Icon(Icons.sell_outlined),
+                          ),
+                        ],
+                        selected: {_selectedSide},
+                        onSelectionChanged: (selection) {
+                          if (selection.isEmpty) return;
+                          setState(() => _selectedSide = selection.first);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _quantityController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Quantité (${widget.ticker.baseAsset})',
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Montant estimé: ${_formatAmount(total, maxFractionDigits: 2)} USD',
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: quantity == null || quantity <= 0
+                              ? null
+                              : () {
+                                  try {
+                                    marketProvider.placeOrder(
+                                      market: widget.market,
+                                      ticker: widget.ticker,
+                                      side: _selectedSide,
+                                      quantity: quantity,
+                                    );
+                                    final sideText =
+                                        _selectedSide == TradeSide.buy ? 'achat' : 'vente';
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Ordre de $sideText exécuté sur ${widget.ticker.baseAsset}.',
+                                        ),
+                                      ),
+                                    );
+                                    setState(() => _quantityController.text = '1');
+                                  } on StateError catch (error) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(error.message)),
+                                    );
+                                  } on ArgumentError catch (error) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(error.message.toString())),
+                                    );
+                                  }
+                                },
+                          icon: Icon(
+                            _selectedSide == TradeSide.buy
+                                ? Icons.add_shopping_cart_outlined
+                                : Icons.sell_outlined,
+                          ),
+                          label: Text(
+                            _selectedSide == TradeSide.buy
+                                ? 'Confirmer l\'achat'
+                                : 'Confirmer la vente',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Achats / ventes effectués',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      if (orders.isEmpty)
+                        const Text('Aucune opération enregistrée pour cet actif.')
+                      else
+                        ...orders.map((order) {
+                          final isBuy = order.side == TradeSide.buy;
+                          return ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              isBuy ? Icons.add_shopping_cart_outlined : Icons.sell_outlined,
+                              color: isBuy
+                                  ? Colors.green.shade700
+                                  : Theme.of(context).colorScheme.error,
+                            ),
+                            title: Text(
+                              '${isBuy ? 'Achat' : 'Vente'} '
+                              '${_formatAmount(order.quantity)} ${order.baseAsset}',
+                            ),
+                            subtitle: Text(
+                              '${_formatAmount(order.total, maxFractionDigits: 2)} USD • ${_formatDateTime(order.executedAt)}',
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EvolutionChart extends StatelessWidget {
+  const _EvolutionChart({
+    required this.values,
+    required this.isPositive,
+  });
+
+  final List<double> values;
+  final bool isPositive;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _EvolutionChartPainter(
+        values: values,
+        color: isPositive ? Colors.green.shade700 : Theme.of(context).colorScheme.error,
+        gridColor: Theme.of(context).dividerColor,
+      ),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _EvolutionChartPainter extends CustomPainter {
+  const _EvolutionChartPainter({
+    required this.values,
+    required this.color,
+    required this.gridColor,
+  });
+
+  final List<double> values;
+  final Color color;
+  final Color gridColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint = Paint()
+      ..color = gridColor.withOpacity(0.35)
+      ..strokeWidth = 1;
+    final linePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    for (var i = 1; i <= 3; i++) {
+      final y = size.height * (i / 4);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    if (values.length < 2) return;
+
+    final minValue = values.reduce(math.min);
+    final maxValue = values.reduce(math.max);
+    final span = math.max(maxValue - minValue, 0.0000001);
+
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = (i / (values.length - 1)) * size.width;
+      final normalized = (values[i] - minValue) / span;
+      final y = size.height - (normalized * size.height);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    canvas.drawPath(path, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EvolutionChartPainter oldDelegate) {
+    return oldDelegate.values != values ||
+        oldDelegate.color != color ||
+        oldDelegate.gridColor != gridColor;
   }
 }
 
 class _MarketTickerCard extends StatelessWidget {
   const _MarketTickerCard({
     required this.ticker,
+    required this.buyCount,
+    required this.sellCount,
     required this.onBuy,
     required this.onSell,
   });
 
   final MarketTicker ticker;
+  final int buyCount;
+  final int sellCount;
   final VoidCallback onBuy;
   final VoidCallback onSell;
 
@@ -490,6 +915,16 @@ class _MarketTickerCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (buyCount > 0 || sellCount > 0) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  if (buyCount > 0) Chip(label: Text('Achats: $buyCount')),
+                  if (sellCount > 0) Chip(label: Text('Ventes: $sellCount')),
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [
@@ -517,35 +952,19 @@ class _MarketTickerCard extends StatelessWidget {
   }
 }
 
-class _RealAssetTicker {
-  const _RealAssetTicker({
-    required this.symbol,
-    required this.name,
-    required this.unit,
-    required this.lastPrice,
-    required this.priceChangePercent,
-  });
-
-  final String symbol;
-  final String name;
-  final String unit;
-  final double lastPrice;
-  final double priceChangePercent;
-}
-
 class _RealAssetTickerCard extends StatelessWidget {
   const _RealAssetTickerCard({
     required this.ticker,
-    required this.buyPositions,
-    required this.sellPositions,
+    required this.buyCount,
+    required this.sellCount,
     required this.formatPrice,
     required this.onBuy,
     required this.onSell,
   });
 
-  final _RealAssetTicker ticker;
-  final int buyPositions;
-  final int sellPositions;
+  final MarketTicker ticker;
+  final int buyCount;
+  final int sellCount;
   final String Function(double value) formatPrice;
   final VoidCallback onBuy;
   final VoidCallback onSell;
@@ -555,8 +974,7 @@ class _RealAssetTickerCard extends StatelessWidget {
     final positive = ticker.priceChangePercent >= 0;
     final changeColor =
         positive ? Colors.green.shade700 : Theme.of(context).colorScheme.error;
-    final formattedChange =
-        '${positive ? '+' : ''}${ticker.priceChangePercent.toStringAsFixed(2)}%';
+    final formattedChange = '${positive ? '+' : ''}${ticker.priceChangePercent.toStringAsFixed(2)}%';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -571,11 +989,13 @@ class _RealAssetTickerCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${ticker.name} (${ticker.symbol})',
+                        '${ticker.name ?? ticker.baseAsset} (${ticker.symbol})',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 2),
-                      Text('Prix: ${formatPrice(ticker.lastPrice)} USD / ${ticker.unit}'),
+                      Text(
+                        'Prix: ${formatPrice(ticker.lastPrice)} USD / ${ticker.unit ?? 'unité'}',
+                      ),
                     ],
                   ),
                 ),
@@ -588,18 +1008,17 @@ class _RealAssetTickerCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (buyPositions > 0 || sellPositions > 0)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Wrap(
-                  spacing: 8,
-                  children: [
-                    if (buyPositions > 0) Chip(label: Text('Achats: $buyPositions')),
-                    if (sellPositions > 0) Chip(label: Text('Ventes: $sellPositions')),
-                  ],
-                ),
+            if (buyCount > 0 || sellCount > 0) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  if (buyCount > 0) Chip(label: Text('Achats: $buyCount')),
+                  if (sellCount > 0) Chip(label: Text('Ventes: $sellCount')),
+                ],
               ),
+            ],
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
