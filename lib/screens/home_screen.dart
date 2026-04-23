@@ -299,7 +299,7 @@ class _AccueilTab extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'Marché Binance',
+                          'Marché crypto',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
