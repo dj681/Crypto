@@ -42,44 +42,6 @@ class _MarketScreenState extends State<MarketScreen> {
   }
 }
 
-const List<_RealAssetTicker> _realAssetCatalog = [
-  _RealAssetTicker(
-    symbol: 'XAU',
-    name: 'Or',
-    unit: 'oz',
-    lastPrice: 2388.42,
-    priceChangePercent: 0.87,
-  ),
-  _RealAssetTicker(
-    symbol: 'XBR',
-    name: 'Pétrole Brent',
-    unit: 'baril',
-    lastPrice: 83.16,
-    priceChangePercent: -0.42,
-  ),
-  _RealAssetTicker(
-    symbol: 'XTI',
-    name: 'Pétrole WTI',
-    unit: 'baril',
-    lastPrice: 79.95,
-    priceChangePercent: -0.35,
-  ),
-  _RealAssetTicker(
-    symbol: 'XAG',
-    name: 'Argent',
-    unit: 'oz',
-    lastPrice: 28.74,
-    priceChangePercent: 0.65,
-  ),
-  _RealAssetTicker(
-    symbol: 'DIA',
-    name: 'Diamant',
-    unit: 'ct',
-    lastPrice: 1265.30,
-    priceChangePercent: 0.18,
-  ),
-];
-
 enum TraderMarketType { crypto, realAssets }
 
 class TraderMarketView extends StatefulWidget {
@@ -226,7 +188,7 @@ class _BinanceMarketViewState extends State<BinanceMarketView> {
                 children: [
                   if (widget.showIntroText) ...[
                     const Text(
-                      'Marché spot Binance. Toutes les paires disponibles sont listées ci-dessous.',
+                      'Marché crypto applicatif en temps réel. Toutes les paires disponibles sont listées ci-dessous.',
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -323,6 +285,27 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
   final Map<String, int> _sessionBuyPositions = {};
   final Map<String, int> _sessionSellPositions = {};
 
+  static const Map<String, ({String name, String unit})> _realAssetsMetadata = {
+    'XAUUSD': (name: 'Or', unit: 'oz'),
+    'XAGUSD': (name: 'Argent', unit: 'oz'),
+    'BRNUSD': (name: 'Pétrole Brent', unit: 'baril'),
+    'WTIUSD': (name: 'Pétrole WTI', unit: 'baril'),
+    'XPTUSD': (name: 'Platine', unit: 'oz'),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final marketProvider = context.read<MarketProvider>();
+      if (marketProvider.isRealAssetsLoading || marketProvider.realAssetTickers.isNotEmpty) {
+        return;
+      }
+      marketProvider.refreshRealAssetsMarket();
+    });
+  }
+
   void _takePosition(_RealAssetTicker ticker, {required bool isBuy}) {
     setState(() {
       final target = isBuy ? _sessionBuyPositions : _sessionSellPositions;
@@ -336,15 +319,24 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
 
   @override
   Widget build(BuildContext context) {
+    final marketProvider = context.watch<MarketProvider>();
     final query = _query.trim().toUpperCase();
+    final allAssets = marketProvider.realAssetTickers
+        .map((ticker) => _toDisplayTicker(ticker))
+        .toList(growable: false);
     final assets = query.isEmpty
-        ? _realAssetCatalog
-        : _realAssetCatalog
+        ? allAssets
+        : allAssets
             .where((asset) =>
                 asset.symbol.contains(query) || asset.name.toUpperCase().contains(query))
             .toList(growable: false);
+    final showList = !marketProvider.isRealAssetsLoading &&
+        marketProvider.realAssetsStatus != MarketStatus.error &&
+        assets.isNotEmpty;
 
-    return CustomScrollView(
+    return RefreshIndicator(
+      onRefresh: marketProvider.refreshRealAssetsMarket,
+      child: CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
@@ -353,11 +345,11 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Actifs réels disponibles pour des positions d’achat ou de vente.',
+                  'Actifs réels disponibles avec cotations backend en temps réel.',
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Prix indicatifs (exemples statiques). Positions suivies localement durant cette session.',
+                  'Vous pouvez surcharger les prix côté backend pour ajuster manuellement les valeurs.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 12),
@@ -377,9 +369,28 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
                   onChanged: (value) => setState(() => _query = value),
                 ),
                 const SizedBox(height: 8),
-                if (assets.isEmpty)
+                if (marketProvider.isRealAssetsLoading &&
+                    marketProvider.realAssetTickers.isEmpty)
                   const Padding(
-                    padding: EdgeInsets.only(top: 24),
+                    padding: EdgeInsets.only(top: 48),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (marketProvider.realAssetsStatus == MarketStatus.error)
+                  Card(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        marketProvider.realAssetsError ?? 'Erreur de chargement.',
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onErrorContainer),
+                      ),
+                    ),
+                  )
+                else if (!showList)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 48),
                     child: Center(child: Text('Aucun actif réel trouvé.')),
                   )
                 else
@@ -391,7 +402,7 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
             ),
           ),
         ),
-        if (assets.isNotEmpty)
+        if (showList)
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
               widget.contentPadding.left,
@@ -415,6 +426,18 @@ class _RealAssetsMarketViewState extends State<RealAssetsMarketView> {
             ),
           ),
       ],
+      ),
+    );
+  }
+
+  _RealAssetTicker _toDisplayTicker(MarketTicker ticker) {
+    final metadata = _realAssetsMetadata[ticker.symbol];
+    return _RealAssetTicker(
+      symbol: ticker.symbol,
+      name: ticker.name ?? metadata?.name ?? ticker.baseAsset,
+      unit: ticker.unit ?? metadata?.unit ?? 'unité',
+      lastPrice: ticker.lastPrice,
+      priceChangePercent: ticker.priceChangePercent,
     );
   }
 }

@@ -10,17 +10,17 @@ lib/
   models/
     wallet.dart                   # Modèle immuable du portefeuille (sans secrets)
     tx_record.dart                # Enregistrement local de transaction
-    market_ticker.dart            # Données d'une paire du marché Binance
+    market_ticker.dart            # Données d'un ticker (crypto ou actif réel)
   services/
     wallet_service.dart           # BIP-39, dérivation de clé, stockage chiffré
     blockchain_service.dart       # Client web3dart : balance, envoi, gas
     security_service.dart         # PIN (SHA-256), biométrie (local_auth)
-    market_service.dart           # API publique Binance (ticker 24h)
+    market_service.dart           # API marché applicative (backend) + fallback
   providers/
     wallet_provider.dart          # État global du portefeuille + historique
     blockchain_provider.dart      # Solde ETH, envoi de transactions
     security_provider.dart        # Session : verrouillage, PIN, biométrie
-    market_provider.dart          # État du marché crypto (Binance)
+    market_provider.dart          # État des marchés crypto et actifs réels
   screens/
     splash_screen.dart            # Chargement initial (wallet/session)
     onboarding_screen.dart        # Choix : créer ou importer
@@ -43,7 +43,7 @@ test/
   wallet_service_test.dart        # Tests unitaires du service wallet
   security_provider_test.dart     # Tests unitaires PIN, biométrie, session
 bin/
-  backend_server.dart             # Backend HTTP léger (health + proxy Binance)
+  backend_server.dart             # Backend HTTP (health, marchés applicatifs, overrides manuels)
 ```
 
 ## Fonctionnalités implémentées
@@ -59,8 +59,9 @@ bin/
 - Envoi de transactions ETH avec estimation des frais gas
 - Historique local des transactions (envoi/réception, statut)
 - URL RPC personnalisable depuis les paramètres
-- Marché crypto Binance spot complet (toutes les paires disponibles) avec actualisation
-- Marché des actifs réels (or, pétrole, diamant, etc.) avec positions d'achat/vente
+- Marché crypto en temps réel via backend applicatif (source Binance)
+- Marché des actifs réels en temps réel via backend applicatif (or, argent, Brent, WTI, platine)
+- Possibilité d'override manuel des prix côté backend
 - Sélecteur de marché dans l'onglet Trader (crypto-monnaies numériques / actifs réels)
 
 ### Sécurité
@@ -91,7 +92,7 @@ bin/
    flutter run
    ```
 
-### Backend (optionnel)
+### Backend (recommandé)
 
 Lancer le backend local :
 
@@ -105,6 +106,32 @@ Pour faire utiliser ce backend par l'app Flutter :
 
 ```
 flutter run --dart-define=BACKEND_URL=http://localhost:8080
+```
+
+#### Endpoints marché backend
+
+- `GET /api/market/crypto` : liste des tickers crypto en temps réel.
+- `GET /api/market/real-assets` : liste des actifs réels en temps réel.
+- `GET /api/market/overrides` : liste des overrides manuels actifs.
+- `PUT /api/market/overrides` : crée/modifie un override manuel.
+- `DELETE /api/market/overrides/{market}/{symbol}` : supprime un override.
+
+Exemple d'override manuel :
+
+```
+curl -X PUT http://localhost:8080/api/market/overrides \
+  -H "Content-Type: application/json" \
+  -d '{
+    "market":"real-assets",
+    "symbol":"XAUUSD",
+    "baseAsset":"XAU",
+    "quoteAsset":"USD",
+    "lastPrice":2450.12,
+    "priceChangePercent":1.23,
+    "quoteVolume":1000000,
+    "name":"Or",
+    "unit":"oz"
+  }'
 ```
 
 4. Exécuter les tests :
