@@ -628,7 +628,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
     final count = period.pointCount;
 
     return List<double>.generate(count, (index) {
-      final progress = index / (count - 1);
+      final progress = count <= 1 ? 1.0 : index / (count - 1);
       final baseline = start + ((current - start) * progress);
       final primaryWave = math.sin(progress * math.pi * 2) * amplitude;
       final secondaryWave =
