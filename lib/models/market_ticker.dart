@@ -27,7 +27,9 @@ class MarketTicker {
         double.tryParse(json['priceChangePercent']?.toString() ?? '');
     final quoteVolume = double.tryParse(json['quoteVolume']?.toString() ?? '');
     if (lastPrice == null || priceChangePercent == null || quoteVolume == null) {
-      throw const FormatException('Ticker invalide.');
+      throw const FormatException(
+        'Ticker invalide: lastPrice, priceChangePercent ou quoteVolume manquant/invalide.',
+      );
     }
 
     return MarketTicker(

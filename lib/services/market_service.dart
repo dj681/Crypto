@@ -64,7 +64,8 @@ class MarketService {
       final response = await _httpClient
           .get(_cryptoMarketUri)
           .timeout(const Duration(seconds: 20))
-          .catchError((Object e) => throw StateError('Erreur réseau marché crypto.'));
+          .catchError(
+              (Object e) => throw StateError('Erreur réseau marché crypto: $e'));
       if (response.statusCode != 200) {
         throw StateError('Erreur backend marché crypto (${response.statusCode})');
       }
@@ -78,7 +79,8 @@ class MarketService {
       final response = await _httpClient
           .get(_realAssetsMarketUri)
           .timeout(const Duration(seconds: 20))
-          .catchError((Object e) => throw StateError('Erreur réseau actifs réels.'));
+          .catchError(
+              (Object e) => throw StateError('Erreur réseau actifs réels: $e'));
       if (response.statusCode != 200) {
         throw StateError('Erreur backend actifs réels (${response.statusCode})');
       }
@@ -205,7 +207,9 @@ class MarketService {
     final decoded = jsonDecode(body);
     final rawTickers = decoded is Map<String, dynamic> ? decoded['tickers'] : decoded;
     if (rawTickers is! List) {
-      throw const FormatException('Réponse marché inattendue.');
+      throw FormatException(
+        'Réponse marché inattendue: liste de tickers attendue, reçu ${rawTickers.runtimeType}.',
+      );
     }
     final tickers = <MarketTicker>[];
     for (final item in rawTickers) {
