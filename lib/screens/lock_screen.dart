@@ -6,6 +6,7 @@ import '../providers/wallet_provider.dart';
 import '../widgets/pin_pad.dart';
 import 'admin_recharge_history_screen.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 /// Shown when the session is locked.  Accepts PIN or biometric authentication.
 class LockScreen extends StatefulWidget {
@@ -39,6 +40,43 @@ class _LockScreenState extends State<LockScreen> {
     final ok = await context.read<SecurityProvider>().unlockWithBiometrics();
     if (mounted) setState(() => _bioLoading = false);
     if (ok) _navigateAfterUnlock();
+  }
+
+  Future<void> _recoverWithPhrase() async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Récupérer avec la phrase ?'),
+            content: const Text(
+              'Vous allez effacer le portefeuille actuel de cet appareil et '
+              'en importer un nouveau à l\'aide de votre phrase de récupération. '
+              'Assurez-vous de la connaître avant de continuer.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Annuler'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Continuer'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed || !mounted) return;
+
+    await context.read<WalletProvider>().clearWallet();
+    if (!mounted) return;
+    await context.read<SecurityProvider>().init();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      OnboardingScreen.routeName,
+      (route) => false,
+    );
   }
 
   void _navigateAfterUnlock() {
@@ -102,6 +140,11 @@ class _LockScreenState extends State<LockScreen> {
                         label: const Text('Déverrouiller avec la biométrie'),
                       ),
               ],
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: _recoverWithPhrase,
+                child: const Text('Récupérer avec ma phrase de récupération'),
+              ),
             ],
           ),
         ),
