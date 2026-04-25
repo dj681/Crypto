@@ -80,6 +80,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed && mounted) {
       await context.read<WalletProvider>().clearWallet();
       if (!mounted) return;
+      // Re-initialise SecurityProvider so _hasPin / _isLocked reflect the
+      // now-empty secure storage.  Without this, _hasPin stays true in memory
+      // and PinSetupScreen mistakenly asks for the "current PIN" that was just
+      // deleted, blocking the user from creating a new account.
+      await context.read<SecurityProvider>().init();
+      if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(
         context,
         OnboardingScreen.routeName,
