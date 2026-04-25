@@ -56,6 +56,7 @@ class WalletProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
+      rethrow;
     }
   }
 

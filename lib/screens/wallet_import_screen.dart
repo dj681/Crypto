@@ -47,8 +47,11 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
 
       if (wallet?.isAdmin == true) {
         // Admin account: PIN is pre-configured (817319). Sync the security
-        // provider state so isLocked / hasPin are correct, then navigate.
+        // provider state so isLocked / hasPin are correct, then unlock the
+        // session (the admin authenticated via the recovery phrase) and navigate.
         await context.read<SecurityProvider>().init();
+        if (!mounted) return;
+        context.read<SecurityProvider>().unlock();
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(
           context,
