@@ -57,16 +57,18 @@ final List<GiftCardType> giftCardTypes = [
 ];
 
 // RegExp patterns (top-level so GiftCardType can reference them).
+// Separators (dash or space) between groups are optional so that codes
+// copied without hyphens, or with spaces, are accepted as well.
 final RegExp _applePattern =
-    RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
+    RegExp(r'^[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}$');
 final RegExp _googlePattern =
-    RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
+    RegExp(r'^[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}$');
 final RegExp _amazonPattern =
-    RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{6}-[A-Z0-9]{4}$');
+    RegExp(r'^[A-Z0-9]{4}[-\s]?[A-Z0-9]{6}[-\s]?[A-Z0-9]{4}$');
 final RegExp _steamPattern =
-    RegExp(r'^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$');
+    RegExp(r'^[A-Z0-9]{5}[-\s]?[A-Z0-9]{5}[-\s]?[A-Z0-9]{5}$');
 final RegExp _paysafecardPattern =
-    RegExp(r'^\d{4}-\d{4}-\d{4}-\d{4}$');
+    RegExp(r'^\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}$');
 
 class GiftCardService {
   GiftCardService({http.Client? httpClient})
