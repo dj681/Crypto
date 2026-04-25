@@ -20,6 +20,7 @@ class _Keys {
   static const String hasPinEnabled = 'wallet_has_pin';
   static const String hasBiometricsEnabled = 'wallet_has_biometrics';
   static const String txHistory = 'wallet_tx_history';
+  static const String userId = 'wallet_user_id';
 }
 
 /// Handles wallet creation/import and all encrypted persistence.
@@ -60,6 +61,19 @@ class WalletService {
     // Use the first 32 bytes of the 64-byte seed as private key.
     final privateKeyBytes = _privateKeyBytesFromSeed(seed);
     return EthPrivateKey(privateKeyBytes);
+  }
+
+  // ── user ID generation ───────────────────────────────────────────────────
+
+  /// Generates a unique user ID in the form "CS-XXXXXXXX" (8 random hex chars).
+  static String _generateUserId() {
+    final random = Random.secure();
+    final bytes = Uint8List(4);
+    for (var i = 0; i < 4; i++) {
+      bytes[i] = random.nextInt(256);
+    }
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join().toUpperCase();
+    return 'CS-$hex';
   }
 
   // ── mnemonic generation / validation ─────────────────────────────────────
@@ -160,6 +174,7 @@ class WalletService {
     final privateKeyHex = _privateKeyHexFromSeed(seed);
     final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
+    final userId = _generateUserId();
 
     await Future.wait([
       _storage.write(key: _Keys.mnemonic, value: mnemonic),
@@ -167,12 +182,14 @@ class WalletService {
       _storage.write(key: _Keys.address, value: address),
       _storage.write(key: _Keys.hasPinEnabled, value: 'false'),
       _storage.write(key: _Keys.hasBiometricsEnabled, value: 'false'),
+      _storage.write(key: _Keys.userId, value: userId),
     ]);
 
     return WalletModel(
       address: address,
       hasPinEnabled: false,
       hasBiometricsEnabled: false,
+      userId: userId,
     );
   }
 
@@ -227,10 +244,19 @@ class WalletService {
 
     final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
     final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
+
+    // Load existing userId, or generate + persist one for pre-existing wallets.
+    var userId = await _storage.read(key: _Keys.userId);
+    if (userId == null || userId.isEmpty) {
+      userId = _generateUserId();
+      await _storage.write(key: _Keys.userId, value: userId);
+    }
+
     return WalletModel(
       address: address,
       hasPinEnabled: hasPinStr == 'true',
       hasBiometricsEnabled: hasBioStr == 'true',
+      userId: userId,
     );
   }
 
