@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -96,6 +97,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: const Text('Paramètres')),
       body: ListView(
         children: [
+          // ── Account section ───────────────────────────────────────────
+          _SectionHeader(title: 'Compte'),
+          const _UserIdTile(),
+          const Divider(),
+
           // ── Security section ──────────────────────────────────────────
           _SectionHeader(title: 'Sécurité'),
           ListTile(
@@ -182,6 +188,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _confirmClearWallet,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UserIdTile extends StatelessWidget {
+  const _UserIdTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final wallet = context.watch<WalletProvider>().wallet;
+    final userId = wallet?.userId ?? '—';
+
+    return ListTile(
+      leading: const Icon(Icons.badge_outlined),
+      title: const Text('ID utilisateur'),
+      subtitle: Text(
+        userId,
+        style: const TextStyle(fontFamily: 'monospace', letterSpacing: 1.2),
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.copy_outlined),
+        tooltip: 'Copier l\'ID',
+        onPressed: wallet == null
+            ? null
+            : () {
+                Clipboard.setData(ClipboardData(text: userId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ID copié dans le presse-papier')),
+                );
+              },
       ),
     );
   }
