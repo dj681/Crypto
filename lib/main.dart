@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'providers/account_history_provider.dart';
 import 'providers/blockchain_provider.dart';
 import 'providers/market_provider.dart';
 import 'providers/security_provider.dart';
@@ -42,6 +43,9 @@ Future<void> main() async {
   final marketProvider = MarketProvider(marketService: marketService);
   await marketProvider.loadState();
 
+  final accountHistoryProvider = AccountHistoryProvider();
+  await accountHistoryProvider.loadState();
+
   runApp(
     MultiProvider(
       providers: [
@@ -58,6 +62,7 @@ Future<void> main() async {
           ),
         ),
         ChangeNotifierProvider.value(value: marketProvider),
+        ChangeNotifierProvider.value(value: accountHistoryProvider),
       ],
       child: MyCryptoSafeApp(navigatorKey: _navigatorKey),
     ),

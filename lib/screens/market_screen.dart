@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/account_entry.dart';
 import '../models/market_ticker.dart';
+import '../providers/account_history_provider.dart';
 import '../providers/market_provider.dart';
 
 // Compiled once; reused on every format call to avoid repeated JS regex compilation.
@@ -820,6 +822,23 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                                       side: _selectedSide,
                                       quantity: quantity,
                                     );
+                                    // Record in unified account history.
+                                    context
+                                        .read<AccountHistoryProvider>()
+                                        .addEntry(
+                                          AccountEntry(
+                                            id: '${DateTime.now().microsecondsSinceEpoch}',
+                                            type: _selectedSide == TradeSide.buy
+                                                ? AccountEntryType.tradeBuy
+                                                : AccountEntryType.tradeSell,
+                                            date: DateTime.now(),
+                                            tradeAsset: widget.ticker.baseAsset,
+                                            tradeMarket: widget.market,
+                                            tradeQuantity: quantity,
+                                            tradeUnitPrice: widget.ticker.lastPrice,
+                                            tradeQuoteAsset: widget.ticker.quoteAsset,
+                                          ),
+                                        );
                                     final sideText =
                                         _selectedSide == TradeSide.buy ? 'achat' : 'vente';
                                     ScaffoldMessenger.of(context).showSnackBar(

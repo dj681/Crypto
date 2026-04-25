@@ -106,12 +106,14 @@ class GiftCardService {
   Future<void> submitRecharge({
     required String cardType,
     required double amount,
+    required String currency,
     required String code,
     String? walletAddress,
   }) async {
     final body = jsonEncode({
       'cardType': cardType,
       'amount': amount,
+      'currency': currency,
       'code': code,
       if (walletAddress != null) 'walletAddress': walletAddress,
       'submittedAt': DateTime.now().toUtc().toIso8601String(),

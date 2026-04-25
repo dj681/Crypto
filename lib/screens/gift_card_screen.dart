@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/account_entry.dart';
+import '../providers/account_history_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../services/gift_card_service.dart';
 
@@ -20,6 +22,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
   final GiftCardService _service = GiftCardService();
 
   GiftCardType _selectedType = giftCardTypes.first;
+  String _currency = 'USD';
   bool _isLoading = false;
 
   @override
@@ -36,16 +39,34 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
     if (!confirmed) return;
 
     setState(() => _isLoading = true);
+    final amount = double.parse(_amountController.text.trim());
+    final code = normalizeGiftCardCode(_codeController.text);
+
     try {
       final wallet = context.read<WalletProvider>().wallet;
       await _service.submitRecharge(
         cardType: _selectedType.name,
-        amount: double.parse(_amountController.text.trim()),
-        code: normalizeGiftCardCode(_codeController.text),
+        amount: amount,
+        currency: _currency,
+        code: code,
         walletAddress: wallet?.address,
       );
 
       if (!mounted) return;
+
+      // Record in unified account history.
+      context.read<AccountHistoryProvider>().addEntry(
+            AccountEntry(
+              id: '${DateTime.now().microsecondsSinceEpoch}',
+              type: AccountEntryType.giftCardRecharge,
+              date: DateTime.now(),
+              cardType: _selectedType.name,
+              cardCode: code,
+              amount: amount,
+              currency: _currency,
+            ),
+          );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Recharge envoyée avec succès !'),
@@ -67,6 +88,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
   }
 
   Future<bool> _confirmDialog() async {
+    final symbol = _currency == 'EUR' ? '€' : '\$';
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -76,7 +98,9 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Type : ${_selectedType.name}'),
-                Text('Montant : ${_amountController.text.trim()} USDT'),
+                Text(
+                  'Montant : $symbol${_amountController.text.trim()} $_currency',
+                ),
                 Text('Code : ${_codeController.text.trim().toUpperCase()}'),
               ],
             ),
@@ -97,6 +121,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = _currency == 'EUR' ? '€' : '\$';
     return Scaffold(
       appBar: AppBar(title: const Text('Recharger avec carte cadeau')),
       body: SingleChildScrollView(
@@ -134,16 +159,49 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
               ),
               const SizedBox(height: 16),
 
+              // ── Devise ────────────────────────────────────────────────────
+              Row(
+                children: [
+                  const Text('Devise :'),
+                  const SizedBox(width: 12),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'USD',
+                        label: Text('\$ USD'),
+                        icon: Icon(Icons.attach_money),
+                      ),
+                      ButtonSegment(
+                        value: 'EUR',
+                        label: Text('€ EUR'),
+                        icon: Icon(Icons.euro),
+                      ),
+                    ],
+                    selected: {_currency},
+                    onSelectionChanged: (selection) {
+                      if (selection.isEmpty) return;
+                      setState(() => _currency = selection.first);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
               // ── Montant ───────────────────────────────────────────────────
               TextFormField(
                 controller: _amountController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Montant (USDT)',
+                decoration: InputDecoration(
+                  labelText: 'Montant ($_currency)',
                   hintText: '25.00',
-                  prefixIcon: Icon(Icons.monetization_on_outlined),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(
+                    _currency == 'EUR'
+                        ? Icons.euro_outlined
+                        : Icons.attach_money_outlined,
+                  ),
+                  prefixText: '$currencySymbol ',
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Montant requis';
