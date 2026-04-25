@@ -3,16 +3,45 @@ import 'package:provider/provider.dart';
 
 import '../models/account_entry.dart';
 import '../providers/account_history_provider.dart';
+import '../providers/wallet_provider.dart';
 import 'home_screen.dart';
 
 /// Special screen displayed to the administrator/supervisor account after PIN
 /// authentication.  Lists **all** gift-card recharge entries from every account
 /// that has ever used this app on the device, sorted newest-first, each row
 /// showing the originating account's [AccountEntry.userId].
-class AdminRechargeHistoryScreen extends StatelessWidget {
+///
+/// Access is guarded: non-admin wallets are immediately redirected to
+/// [HomeScreen].
+class AdminRechargeHistoryScreen extends StatefulWidget {
   const AdminRechargeHistoryScreen({super.key});
 
   static const String routeName = '/admin/recharge-history';
+
+  @override
+  State<AdminRechargeHistoryScreen> createState() =>
+      _AdminRechargeHistoryScreenState();
+}
+
+class _AdminRechargeHistoryScreenState
+    extends State<AdminRechargeHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _guardAccess());
+  }
+
+  void _guardAccess() {
+    if (!mounted) return;
+    final wallet = context.read<WalletProvider>().wallet;
+    if (wallet?.isAdmin != true) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        HomeScreen.routeName,
+        (route) => false,
+      );
+    }
+  }
 
   static String _formatDate(DateTime dt) {
     final d = dt.toLocal();
@@ -26,6 +55,16 @@ class AdminRechargeHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final wallet = context.watch<WalletProvider>().wallet;
+
+    // If wallet not yet loaded or not admin, show a loading/blank state
+    // while the guard in initState redirects.
+    if (wallet?.isAdmin != true) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final allEntries = context
         .watch<AccountHistoryProvider>()
         .entries
@@ -35,17 +74,6 @@ class AdminRechargeHistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historiques de recharge – Tous comptes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home_outlined),
-            tooltip: 'Accueil',
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(
-              context,
-              HomeScreen.routeName,
-              (route) => false,
-            ),
-          ),
-        ],
       ),
       body: allEntries.isEmpty
           ? _buildEmpty(context)

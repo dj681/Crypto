@@ -273,16 +273,9 @@ class WalletService {
     }
 
     final isAdminStr = await _storage.read(key: _Keys.isAdmin);
-    // Back-compat: re-derive admin flag from stored mnemonic when the key is absent.
-    bool isAdminAccount = isAdminStr == 'true';
-    if (isAdminStr == null) {
-      final storedMnemonic = await _storage.read(key: _Keys.mnemonic);
-      if (storedMnemonic != null &&
-          _isAdminPhrase(storedMnemonic.trim().toLowerCase())) {
-        isAdminAccount = true;
-        await _storage.write(key: _Keys.isAdmin, value: 'true');
-      }
-    }
+    // The isAdmin flag is always persisted at creation/import time (since this
+    // feature was introduced). If the key is absent the account is not admin.
+    final isAdminAccount = isAdminStr == 'true';
 
     return WalletModel(
       address: address,
