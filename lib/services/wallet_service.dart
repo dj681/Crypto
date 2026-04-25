@@ -21,6 +21,9 @@ class _Keys {
   static const String hasBiometricsEnabled = 'wallet_has_biometrics';
   static const String txHistory = 'wallet_tx_history';
   static const String userId = 'wallet_user_id';
+  static const String isAdmin = 'wallet_is_admin';
+  // Shared with SecurityService — must stay in sync.
+  static const String pinHash = 'security_pin_hash';
 }
 
 /// Handles wallet creation/import and all encrypted persistence.
@@ -40,6 +43,21 @@ class WalletService {
   static const String _recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
   static final Set<String> _bip39WordSet =
       Set.unmodifiable(bip39_wordlist.bip39EnglishWordlist.toSet());
+
+  /// The special administrator/supervisor recovery phrase.
+  /// This phrase bypasses the BIP-39 word-list check and grants access to the
+  /// global recharge-history view after PIN authentication.
+  static const String adminRecoveryPhrase =
+      'immobilier detin kouekoue yovozin';
+
+  /// Fixed userId for the administrator account — stable across reinstalls.
+  static const String _adminUserId = 'CS-ADMIN';
+
+  /// SHA-256 hash of the administrator PIN, pre-computed and stored at import time
+  /// so the admin can authenticate without manually setting a PIN.
+  static final String _adminPinHash = crypto.sha256
+      .convert(utf8.encode('817319'))
+      .toString();
 
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -93,8 +111,13 @@ class WalletService {
   /// Returns true when [mnemonic] is a supported recovery phrase.
   bool validateMnemonic(String mnemonic) {
     final cleaned = mnemonic.trim().toLowerCase();
-    return bip39.validateMnemonic(cleaned) || _isFourWordRecoveryPhrase(cleaned);
+    return bip39.validateMnemonic(cleaned) ||
+        _isFourWordRecoveryPhrase(cleaned) ||
+        _isAdminPhrase(cleaned);
   }
+
+  static bool _isAdminPhrase(String phrase) =>
+      phrase == adminRecoveryPhrase;
 
   bool _isFourWordRecoveryPhrase(String phrase) {
     final words = phrase.split(RegExp(r'\s+'));
@@ -170,26 +193,38 @@ class WalletService {
   }
 
   Future<WalletModel> _deriveAndPersist(String mnemonic) async {
-    final seed = _seedFromMnemonic(mnemonic);
+    final cleaned = mnemonic.trim().toLowerCase();
+    final isAdminAccount = _isAdminPhrase(cleaned);
+
+    final seed = _seedFromMnemonic(cleaned);
     final privateKeyHex = _privateKeyHexFromSeed(seed);
     final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
-    final userId = _generateUserId();
+    final userId = isAdminAccount ? _adminUserId : _generateUserId();
 
-    await Future.wait([
-      _storage.write(key: _Keys.mnemonic, value: mnemonic),
+    final writes = [
+      _storage.write(key: _Keys.mnemonic, value: cleaned),
       _storage.write(key: _Keys.privateKey, value: privateKeyHex),
       _storage.write(key: _Keys.address, value: address),
-      _storage.write(key: _Keys.hasPinEnabled, value: 'false'),
+      _storage.write(key: _Keys.hasPinEnabled, value: isAdminAccount.toString()),
       _storage.write(key: _Keys.hasBiometricsEnabled, value: 'false'),
       _storage.write(key: _Keys.userId, value: userId),
-    ]);
+      _storage.write(key: _Keys.isAdmin, value: isAdminAccount.toString()),
+    ];
+
+    // Pre-configure the fixed PIN for the admin account so no manual setup is needed.
+    if (isAdminAccount) {
+      writes.add(_storage.write(key: _Keys.pinHash, value: _adminPinHash));
+    }
+
+    await Future.wait(writes);
 
     return WalletModel(
       address: address,
-      hasPinEnabled: false,
+      hasPinEnabled: isAdminAccount,
       hasBiometricsEnabled: false,
       userId: userId,
+      isAdmin: isAdminAccount,
     );
   }
 
@@ -252,11 +287,17 @@ class WalletService {
       await _storage.write(key: _Keys.userId, value: userId);
     }
 
+    final isAdminStr = await _storage.read(key: _Keys.isAdmin);
+    // The isAdmin flag is always persisted at creation/import time (since this
+    // feature was introduced). If the key is absent the account is not admin.
+    final isAdminAccount = isAdminStr == 'true';
+
     return WalletModel(
       address: address,
       hasPinEnabled: hasPinStr == 'true',
       hasBiometricsEnabled: hasBioStr == 'true',
       userId: userId,
+      isAdmin: isAdminAccount,
     );
   }
 

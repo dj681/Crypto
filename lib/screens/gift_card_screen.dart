@@ -55,11 +55,13 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
       if (!mounted) return;
 
       // Record in unified account history.
+      final userId = context.read<WalletProvider>().wallet?.userId;
       context.read<AccountHistoryProvider>().addEntry(
             AccountEntry(
               id: '${DateTime.now().microsecondsSinceEpoch}',
               type: AccountEntryType.giftCardRecharge,
               date: DateTime.now(),
+              userId: userId,
               cardType: _selectedType.name,
               cardCode: code,
               amount: amount,

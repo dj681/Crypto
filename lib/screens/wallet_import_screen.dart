@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/security_provider.dart';
 import '../providers/wallet_provider.dart';
+import 'admin_recharge_history_screen.dart';
 import 'home_screen.dart';
 import 'pin_setup_screen.dart';
 
@@ -40,6 +42,21 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
           .importWallet(_mnemonicController.text.trim());
 
       if (!mounted) return;
+
+      final wallet = context.read<WalletProvider>().wallet;
+
+      if (wallet?.isAdmin == true) {
+        // Admin account: PIN is pre-configured (817319). Sync the security
+        // provider state so isLocked / hasPin are correct, then navigate.
+        await context.read<SecurityProvider>().init();
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AdminRechargeHistoryScreen.routeName,
+          (route) => false,
+        );
+        return;
+      }
 
       final setupPin = await showDialog<bool>(
             context: context,

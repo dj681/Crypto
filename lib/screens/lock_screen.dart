@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/pin_pad.dart';
+import 'admin_recharge_history_screen.dart';
 import 'home_screen.dart';
 
 /// Shown when the session is locked.  Accepts PIN or biometric authentication.
@@ -24,7 +25,7 @@ class _LockScreenState extends State<LockScreen> {
   void _onPin(String pin) async {
     final ok = await context.read<SecurityProvider>().unlockWithPin(pin);
     if (ok) {
-      _navigateHome();
+      _navigateAfterUnlock();
     } else {
       setState(() {
         _errorMessage = 'PIN incorrect';
@@ -37,13 +38,17 @@ class _LockScreenState extends State<LockScreen> {
     setState(() => _bioLoading = true);
     final ok = await context.read<SecurityProvider>().unlockWithBiometrics();
     if (mounted) setState(() => _bioLoading = false);
-    if (ok) _navigateHome();
+    if (ok) _navigateAfterUnlock();
   }
 
-  void _navigateHome() {
+  void _navigateAfterUnlock() {
+    final wallet = context.read<WalletProvider>().wallet;
+    final destination = (wallet?.isAdmin == true)
+        ? AdminRechargeHistoryScreen.routeName
+        : HomeScreen.routeName;
     Navigator.pushNamedAndRemoveUntil(
       context,
-      HomeScreen.routeName,
+      destination,
       (route) => false,
     );
   }

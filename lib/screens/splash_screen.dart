@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/security_provider.dart';
 import '../providers/wallet_provider.dart';
+import 'admin_recharge_history_screen.dart';
 import 'home_screen.dart';
 import 'lock_screen.dart';
 import 'onboarding_screen.dart';
@@ -46,7 +47,13 @@ class _SplashScreenState extends State<SplashScreen> {
       if (securityProvider.isLocked) {
         Navigator.pushReplacementNamed(context, LockScreen.routeName);
       } else {
-        Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+        final isAdmin = walletProvider.wallet?.isAdmin == true;
+        Navigator.pushReplacementNamed(
+          context,
+          isAdmin
+              ? AdminRechargeHistoryScreen.routeName
+              : HomeScreen.routeName,
+        );
       }
     } catch (e, st) {
       debugPrint(
