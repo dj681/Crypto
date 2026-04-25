@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -174,7 +175,7 @@ class MarketProvider extends ChangeNotifier {
     }
     _accountBalanceUsdt -= amountUsdt;
     notifyListeners();
-    saveState();
+    unawaited(saveState());
   }
 
   void placeOrder({
@@ -223,7 +224,7 @@ class MarketProvider extends ChangeNotifier {
       ),
     );
     notifyListeners();
-    saveState();
+    unawaited(saveState());
   }
 
   Future<void> refreshMarket() async {
