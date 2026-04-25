@@ -14,6 +14,8 @@ class AccountEntry {
     required this.id,
     required this.type,
     required this.date,
+    // ── Owner ───────────────────────────────────────────────────────────────
+    this.userId,
     // ── Gift card fields ────────────────────────────────────────────────────
     this.cardType,
     this.cardCode,
@@ -30,6 +32,10 @@ class AccountEntry {
   final String id;
   final AccountEntryType type;
   final DateTime date;
+
+  /// The userId of the wallet account that created this entry.
+  /// May be null for entries recorded before this field was introduced.
+  final String? userId;
 
   // Gift card
   final String? cardType;
@@ -52,6 +58,7 @@ class AccountEntry {
         'id': id,
         'type': type.name,
         'date': date.toIso8601String(),
+        if (userId != null) 'userId': userId,
         if (cardType != null) 'cardType': cardType,
         if (cardCode != null) 'cardCode': cardCode,
         if (amount != null) 'amount': amount,
@@ -70,6 +77,7 @@ class AccountEntry {
           orElse: () => AccountEntryType.giftCardRecharge,
         ),
         date: DateTime.parse(json['date'] as String),
+        userId: json['userId'] as String?,
         cardType: json['cardType'] as String?,
         cardCode: json['cardCode'] as String?,
         amount:
