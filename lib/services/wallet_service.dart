@@ -65,11 +65,11 @@ class WalletService {
 
   // ── user ID generation ───────────────────────────────────────────────────
 
-  /// Generates a unique user ID in the form "CS-XXXXXXXX" (8 random hex chars).
+  /// Generates a unique user ID in the form "CS-XXXXXXXXXXXXXXXX" (16 random hex chars, 64-bit entropy).
   static String _generateUserId() {
     final random = Random.secure();
-    final bytes = Uint8List(4);
-    for (var i = 0; i < 4; i++) {
+    final bytes = Uint8List(8);
+    for (var i = 0; i < 8; i++) {
       bytes[i] = random.nextInt(256);
     }
     final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join().toUpperCase();

@@ -99,7 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // ── Account section ───────────────────────────────────────────
           _SectionHeader(title: 'Compte'),
-          _UserIdTile(),
+          const _UserIdTile(),
           const Divider(),
 
           // ── Security section ──────────────────────────────────────────
@@ -194,6 +194,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 class _UserIdTile extends StatelessWidget {
+  const _UserIdTile({super.key});
+
   @override
   Widget build(BuildContext context) {
     final wallet = context.watch<WalletProvider>().wallet;
