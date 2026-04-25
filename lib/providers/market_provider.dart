@@ -117,6 +117,12 @@ class MarketProvider extends ChangeNotifier {
   // Persistence
   // ---------------------------------------------------------------------------
 
+  /// Single-key atomic state format (v2). Replaces the three separate keys
+  /// used in v1 to avoid a balance/position desync when the app is closed
+  /// between writes.
+  static const _keyStateV2 = 'market_state_v2';
+
+  // Legacy v1 keys – only read during one-time migration.
   static const _keyBalance = 'market_balance_usdt';
   static const _keyPositions = 'market_positions';
   static const _keyOrders = 'market_orders';
@@ -126,6 +132,31 @@ class MarketProvider extends ChangeNotifier {
   Future<void> loadState() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Prefer the new atomic v2 key.
+    final stateRaw = prefs.getString(_keyStateV2);
+    if (stateRaw != null) {
+      final decoded = jsonDecode(stateRaw) as Map<String, dynamic>;
+      _accountBalanceUsdt = (decoded['balance'] as num).toDouble();
+
+      final positionsMap = decoded['positions'] as Map<String, dynamic>;
+      _positions
+        ..clear()
+        ..addAll(
+          positionsMap.map((k, v) => MapEntry(k, (v as num).toDouble())),
+        );
+
+      final ordersList = decoded['orders'] as List<dynamic>;
+      _orders
+        ..clear()
+        ..addAll(
+          ordersList.map((e) => TradeOrder.fromJson(e as Map<String, dynamic>)),
+        );
+
+      notifyListeners();
+      return;
+    }
+
+    // One-time migration from legacy v1 keys.
     final balance = prefs.getDouble(_keyBalance);
     if (balance != null) {
       _accountBalanceUsdt = balance;
@@ -149,17 +180,31 @@ class MarketProvider extends ChangeNotifier {
         );
     }
 
+    // Persist migrated data in the new atomic format so subsequent loads use v2.
+    // Missing keys use the in-memory defaults already set above (empty positions,
+    // full starting balance), so saving partial v1 data is safe.
+    if (balance != null || positionsRaw != null || ordersRaw != null) {
+      await saveState();
+      // Remove legacy v1 keys now that data has been migrated.
+      await prefs.remove(_keyBalance);
+      await prefs.remove(_keyPositions);
+      await prefs.remove(_keyOrders);
+    }
+
     notifyListeners();
   }
 
-  /// Persists balance, positions and orders to [SharedPreferences].
+  /// Persists balance, positions and orders atomically to [SharedPreferences]
+  /// using a single JSON write, preventing desync if the app is closed mid-save.
   Future<void> saveState() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble(_keyBalance, _accountBalanceUsdt);
-    await prefs.setString(_keyPositions, jsonEncode(_positions));
     await prefs.setString(
-      _keyOrders,
-      jsonEncode(_orders.map((o) => o.toJson()).toList()),
+      _keyStateV2,
+      jsonEncode({
+        'balance': _accountBalanceUsdt,
+        'positions': _positions,
+        'orders': _orders.map((o) => o.toJson()).toList(),
+      }),
     );
   }
 
