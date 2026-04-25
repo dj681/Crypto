@@ -8,6 +8,7 @@ import 'providers/market_provider.dart';
 import 'providers/security_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'screens/history_screen.dart';
+import 'screens/gift_card_history_screen.dart';
 import 'screens/gift_card_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
@@ -136,6 +137,8 @@ class _MyCryptoSafeAppState extends State<MyCryptoSafeApp>
         PinSetupScreen.routeName: (context) => const PinSetupScreen(),
         LockScreen.routeName: (context) => const LockScreen(),
         GiftCardScreen.routeName: (context) => const GiftCardScreen(),
+        GiftCardHistoryScreen.routeName: (context) =>
+            const GiftCardHistoryScreen(),
       },
     );
   }

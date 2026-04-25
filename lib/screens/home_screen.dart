@@ -10,6 +10,7 @@ import '../providers/wallet_provider.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_tile.dart';
 import 'history_screen.dart';
+import 'gift_card_history_screen.dart';
 import 'gift_card_screen.dart';
 import 'market_screen.dart';
 import 'receive_screen.dart';
@@ -161,6 +162,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   onOpenCashback: () => _showActionMessage(
                     'Vos récompenses cashback seront affichées ici prochainement.',
+                  ),
+                  onOpenGiftCards: () => Navigator.pushNamed(
+                    context,
+                    GiftCardHistoryScreen.routeName,
                   ),
                 ),
                 _DiscoverTab(
@@ -461,17 +466,25 @@ class _RewardsTab extends StatelessWidget {
     required this.onOpenDailyMissions,
     required this.onOpenReferral,
     required this.onOpenCashback,
+    required this.onOpenGiftCards,
   });
 
   final VoidCallback onOpenDailyMissions;
   final VoidCallback onOpenReferral;
   final VoidCallback onOpenCashback;
+  final VoidCallback onOpenGiftCards;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _FeatureCard(
+          icon: Icons.card_giftcard_outlined,
+          title: 'Cartes cadeaux',
+          description: 'Consultez la liste de vos cartes cadeaux rechargées.',
+          onTap: onOpenGiftCards,
+        ),
         _FeatureCard(
           icon: Icons.task_alt_outlined,
           title: 'Missions quotidiennes',
