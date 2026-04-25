@@ -56,9 +56,14 @@ final List<GiftCardType> giftCardTypes = [
   ),
 ];
 
-// RegExp patterns matched against the *normalised* code (separators stripped).
+// RegExp patterns matched against the *normalized* code (separators stripped).
 // The validator in the UI strips dashes and spaces before checking these patterns
 // so that codes copied without hyphens or with spaces are accepted.
+
+/// Strips dashes and spaces from [code] and uppercases it for validation
+/// and submission.
+String normalizeGiftCardCode(String code) =>
+    code.trim().toUpperCase().replaceAll(RegExp(r'[\s\-]'), '');
 final RegExp _applePattern = RegExp(r'^[A-Z0-9]{16}$');
 final RegExp _googlePattern = RegExp(r'^[A-Z0-9]{16}$');
 final RegExp _amazonPattern = RegExp(r'^[A-Z0-9]{14}$');

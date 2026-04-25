@@ -41,7 +41,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
       await _service.submitRecharge(
         cardType: _selectedType.name,
         amount: double.parse(_amountController.text.trim()),
-        code: _codeController.text.trim().toUpperCase().replaceAll(RegExp(r'[\s\-]'), ''),
+        code: normalizeGiftCardCode(_codeController.text),
         walletAddress: wallet?.address,
       );
 
@@ -167,12 +167,9 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Code requis';
-                  // Normalise: uppercase and strip dashes/spaces so that codes
+                  // Normalize: uppercase and strip dashes/spaces so that codes
                   // copied without separators or with spaces are accepted.
-                  final normalized = v
-                      .trim()
-                      .toUpperCase()
-                      .replaceAll(RegExp(r'[\s\-]'), '');
+                  final normalized = normalizeGiftCardCode(v);
                   if (!_selectedType.pattern.hasMatch(normalized)) {
                     return 'Format invalide. Attendu : ${_selectedType.hintText}';
                   }
