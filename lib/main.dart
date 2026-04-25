@@ -39,6 +39,9 @@ Future<void> main() async {
       BlockchainService(rpcUrl: savedRpcUrl);
   final marketService = MarketService();
 
+  final marketProvider = MarketProvider(marketService: marketService);
+  await marketProvider.loadState();
+
   runApp(
     MultiProvider(
       providers: [
@@ -54,9 +57,7 @@ Future<void> main() async {
             walletService: walletService,
           ),
         ),
-        ChangeNotifierProvider(
-          create: (_) => MarketProvider(marketService: marketService),
-        ),
+        ChangeNotifierProvider.value(value: marketProvider),
       ],
       child: MyCryptoSafeApp(navigatorKey: _navigatorKey),
     ),

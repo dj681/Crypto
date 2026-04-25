@@ -1,4 +1,8 @@
+import 'dart:async' show unawaited;
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/market_ticker.dart';
 import '../services/market_service.dart';
@@ -18,6 +22,17 @@ class TradeOrder {
     required this.executedAt,
   });
 
+  factory TradeOrder.fromJson(Map<String, dynamic> json) => TradeOrder(
+        symbol: json['symbol'] as String,
+        baseAsset: json['baseAsset'] as String,
+        quoteAsset: json['quoteAsset'] as String,
+        market: json['market'] as String,
+        side: json['side'] == 'buy' ? TradeSide.buy : TradeSide.sell,
+        quantity: (json['quantity'] as num).toDouble(),
+        unitPrice: (json['unitPrice'] as num).toDouble(),
+        executedAt: DateTime.parse(json['executedAt'] as String),
+      );
+
   final String symbol;
   final String baseAsset;
   final String quoteAsset;
@@ -28,6 +43,17 @@ class TradeOrder {
   final DateTime executedAt;
 
   double get total => quantity * unitPrice;
+
+  Map<String, dynamic> toJson() => {
+        'symbol': symbol,
+        'baseAsset': baseAsset,
+        'quoteAsset': quoteAsset,
+        'market': market,
+        'side': side == TradeSide.buy ? 'buy' : 'sell',
+        'quantity': quantity,
+        'unitPrice': unitPrice,
+        'executedAt': executedAt.toIso8601String(),
+      };
 }
 
 class MarketProvider extends ChangeNotifier {
@@ -87,6 +113,58 @@ class MarketProvider extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  // ---------------------------------------------------------------------------
+  // Persistence
+  // ---------------------------------------------------------------------------
+
+  static const _keyBalance = 'market_balance_usdt';
+  static const _keyPositions = 'market_positions';
+  static const _keyOrders = 'market_orders';
+
+  /// Restores persisted balance, positions and orders from [SharedPreferences].
+  /// Falls back to defaults when no saved state exists (e.g. first launch).
+  Future<void> loadState() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final balance = prefs.getDouble(_keyBalance);
+    if (balance != null) {
+      _accountBalanceUsdt = balance;
+    }
+
+    final positionsRaw = prefs.getString(_keyPositions);
+    if (positionsRaw != null) {
+      final decoded = jsonDecode(positionsRaw) as Map<String, dynamic>;
+      _positions
+        ..clear()
+        ..addAll(decoded.map((k, v) => MapEntry(k, (v as num).toDouble())));
+    }
+
+    final ordersRaw = prefs.getString(_keyOrders);
+    if (ordersRaw != null) {
+      final decoded = jsonDecode(ordersRaw) as List<dynamic>;
+      _orders
+        ..clear()
+        ..addAll(
+          decoded.map((e) => TradeOrder.fromJson(e as Map<String, dynamic>)),
+        );
+    }
+
+    notifyListeners();
+  }
+
+  /// Persists balance, positions and orders to [SharedPreferences].
+  Future<void> saveState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_keyBalance, _accountBalanceUsdt);
+    await prefs.setString(_keyPositions, jsonEncode(_positions));
+    await prefs.setString(
+      _keyOrders,
+      jsonEncode(_orders.map((o) => o.toJson()).toList()),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+
   /// Deducts [amountUsdt] from the account balance (e.g. for a USDT send).
   void deductBalance(double amountUsdt) {
     if (amountUsdt <= 0) {
@@ -97,6 +175,7 @@ class MarketProvider extends ChangeNotifier {
     }
     _accountBalanceUsdt -= amountUsdt;
     notifyListeners();
+    unawaited(saveState());
   }
 
   void placeOrder({
@@ -145,6 +224,7 @@ class MarketProvider extends ChangeNotifier {
       ),
     );
     notifyListeners();
+    unawaited(saveState());
   }
 
   Future<void> refreshMarket() async {
