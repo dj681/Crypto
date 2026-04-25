@@ -26,9 +26,9 @@ class GiftCardType {
 final List<GiftCardType> giftCardTypes = [
   GiftCardType(
     name: 'Apple / iTunes',
-    hintText: 'XXXX-XXXX-XXXX-XXXX',
+    hintText: 'XXXX-XXXX-XXXX-XXXX (commence par X)',
     pattern: _applePattern,
-    example: 'A1B2-C3D4-E5F6-G7H8',
+    example: 'X1B2-C3D4-E5F6-G7H8',
   ),
   GiftCardType(
     name: 'Google Play',
@@ -38,9 +38,9 @@ final List<GiftCardType> giftCardTypes = [
   ),
   GiftCardType(
     name: 'Amazon',
-    hintText: 'XXXX-XXXXXX-XXXXX',
+    hintText: 'XXXX-XXXXXX-XXXX ou XXXX-XXXXXX-XXXXX (14-15 car.)',
     pattern: _amazonPattern,
-    example: 'AQDM-2WA88M-RPFAR',
+    example: 'AQDM-2WA88M-RPFA',
   ),
   GiftCardType(
     name: 'Steam',
@@ -64,9 +64,9 @@ final List<GiftCardType> giftCardTypes = [
 /// and submission.
 String normalizeGiftCardCode(String code) =>
     code.trim().toUpperCase().replaceAll(RegExp(r'[\s\-]'), '');
-final RegExp _applePattern = RegExp(r'^[A-Z0-9]{16}$');
+final RegExp _applePattern = RegExp(r'^X[A-Z0-9]{15}$');
 final RegExp _googlePattern = RegExp(r'^[A-Z0-9]{20}$');
-final RegExp _amazonPattern = RegExp(r'^[A-Z0-9]{15}$');
+final RegExp _amazonPattern = RegExp(r'^[A-Z0-9]{14,15}$');
 final RegExp _steamPattern = RegExp(r'^[A-Z0-9]{15}$');
 final RegExp _paysafecardPattern = RegExp(r'^\d{16}$');
 
