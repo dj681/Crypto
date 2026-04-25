@@ -22,7 +22,21 @@ class MarketService {
   );
   static final Uri _cryptoMarketUri = _resolveApiUri(
     backendPath: '/api/market/crypto',
-    fallbackUrl: 'https://api.binance.com/api/v3/ticker/24hr',
+    // Fallback is unused: when no backend is configured, fetchCryptoMarket
+    // calls fetchCoinGeckoMarket directly to avoid browser CORS issues.
+    fallbackUrl: '',
+  );
+  // CoinGecko supports browser CORS and is used as the fallback when no backend
+  // proxy is configured, replacing direct Binance calls which are blocked by
+  // CORS in a browser context.
+  static final Uri _coinGeckoUri = Uri.parse(
+    'https://api.coingecko.com/api/v3/coins/markets'
+    '?vs_currency=usd'
+    '&order=market_cap_desc'
+    '&per_page=250'
+    '&page=1'
+    '&sparkline=false'
+    '&price_change_percentage=24h',
   );
   static final Uri _realAssetsMarketUri = _resolveApiUri(
     backendPath: '/api/market/real-assets',
@@ -71,7 +85,56 @@ class MarketService {
       }
       return _extractTickers(response.body, limit: limit);
     }
-    return fetchBinanceMarket(limit: limit, quoteAsset: null);
+    // No backend configured: use CoinGecko which supports browser CORS,
+    // unlike the Binance public API which is blocked cross-origin.
+    return fetchCoinGeckoMarket(limit: limit);
+  }
+
+  /// Fetches crypto market data from the CoinGecko public API.
+  ///
+  /// This endpoint supports browser CORS and does not require a proxy backend.
+  /// Results are sorted by market cap (descending) as returned by the API.
+  Future<List<MarketTicker>> fetchCoinGeckoMarket({int? limit}) async {
+    final response = await _httpClient
+        .get(_coinGeckoUri)
+        .timeout(const Duration(seconds: 20))
+        .catchError(
+            (Object e) => throw StateError('Erreur réseau CoinGecko: $e'));
+    if (response.statusCode != 200) {
+      throw StateError('Erreur CoinGecko (${response.statusCode})');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const FormatException('Réponse CoinGecko inattendue: liste attendue.');
+    }
+    final tickers = <MarketTicker>[];
+    for (final item in decoded) {
+      if (item is! Map<String, dynamic>) continue;
+      final rawSymbol = (item['symbol'] ?? '').toString().trim().toUpperCase();
+      if (rawSymbol.isEmpty) continue;
+      final lastPrice = (item['current_price'] as num?)?.toDouble();
+      final priceChangePercent =
+          (item['price_change_percentage_24h'] as num?)?.toDouble();
+      final quoteVolume = (item['total_volume'] as num?)?.toDouble();
+      if (lastPrice == null || priceChangePercent == null || quoteVolume == null) {
+        continue;
+      }
+      tickers.add(
+        MarketTicker(
+          symbol: '${rawSymbol}USD',
+          baseAsset: rawSymbol,
+          quoteAsset: 'USD',
+          lastPrice: lastPrice,
+          priceChangePercent: priceChangePercent,
+          quoteVolume: quoteVolume,
+          name: (item['name'] as String?)?.trim(),
+        ),
+      );
+    }
+    if (limit != null && limit > 0 && tickers.length > limit) {
+      return tickers.take(limit).toList(growable: false);
+    }
+    return tickers;
   }
 
   Future<List<MarketTicker>> fetchRealAssetsMarket({int? limit}) async {
