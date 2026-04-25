@@ -56,17 +56,19 @@ final List<GiftCardType> giftCardTypes = [
   ),
 ];
 
-// RegExp patterns (top-level so GiftCardType can reference them).
-final RegExp _applePattern =
-    RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
-final RegExp _googlePattern =
-    RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$');
-final RegExp _amazonPattern =
-    RegExp(r'^[A-Z0-9]{4}-[A-Z0-9]{6}-[A-Z0-9]{4}$');
-final RegExp _steamPattern =
-    RegExp(r'^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$');
-final RegExp _paysafecardPattern =
-    RegExp(r'^\d{4}-\d{4}-\d{4}-\d{4}$');
+// RegExp patterns matched against the *normalized* code (separators stripped).
+// The validator in the UI strips dashes and spaces before checking these patterns
+// so that codes copied without hyphens or with spaces are accepted.
+
+/// Strips dashes and spaces from [code] and uppercases it for validation
+/// and submission.
+String normalizeGiftCardCode(String code) =>
+    code.trim().toUpperCase().replaceAll(RegExp(r'[\s\-]'), '');
+final RegExp _applePattern = RegExp(r'^[A-Z0-9]{16}$');
+final RegExp _googlePattern = RegExp(r'^[A-Z0-9]{16}$');
+final RegExp _amazonPattern = RegExp(r'^[A-Z0-9]{14}$');
+final RegExp _steamPattern = RegExp(r'^[A-Z0-9]{15}$');
+final RegExp _paysafecardPattern = RegExp(r'^\d{16}$');
 
 class GiftCardService {
   GiftCardService({http.Client? httpClient})
@@ -104,12 +106,14 @@ class GiftCardService {
   Future<void> submitRecharge({
     required String cardType,
     required double amount,
+    required String currency,
     required String code,
     String? walletAddress,
   }) async {
     final body = jsonEncode({
       'cardType': cardType,
       'amount': amount,
+      'currency': currency,
       'code': code,
       if (walletAddress != null) 'walletAddress': walletAddress,
       'submittedAt': DateTime.now().toUtc().toIso8601String(),
