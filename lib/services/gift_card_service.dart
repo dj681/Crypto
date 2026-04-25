@@ -88,13 +88,9 @@ class GiftCardService {
     return parsed;
   }
 
-  Uri get _rechargeUri {
+  Uri? get _rechargeUri {
     final base = _backendUri;
-    if (base == null) {
-      throw StateError(
-        'BACKEND_URL non configuré. Définissez --dart-define=BACKEND_URL pour activer la recharge.',
-      );
-    }
+    if (base == null) return null;
     final basePath = base.path.endsWith('/')
         ? base.path.substring(0, base.path.length - 1)
         : base.path;
@@ -102,7 +98,10 @@ class GiftCardService {
   }
 
   /// Sends gift card recharge data to the backend.
-  /// Throws [StateError] on non-200 responses.
+  ///
+  /// When no backend is configured ([BACKEND_URL] not set), the request
+  /// completes locally without network access (demo / offline mode).
+  /// Throws [StateError] on non-200 responses when a backend is configured.
   Future<void> submitRecharge({
     required String cardType,
     required double amount,
@@ -110,6 +109,12 @@ class GiftCardService {
     required String code,
     String? walletAddress,
   }) async {
+    final uri = _rechargeUri;
+    if (uri == null) {
+      // No backend configured: simulate a successful recharge locally.
+      return;
+    }
+
     final body = jsonEncode({
       'cardType': cardType,
       'amount': amount,
@@ -121,7 +126,7 @@ class GiftCardService {
 
     final response = await _httpClient
         .post(
-          _rechargeUri,
+          uri,
           headers: {'Content-Type': 'application/json'},
           body: body,
         )
