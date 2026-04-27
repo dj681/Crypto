@@ -96,19 +96,23 @@ class WalletService {
       Set.unmodifiable(bip39_wordlist.bip39EnglishWordlist.toSet());
 
   /// The special administrator/supervisor recovery phrase.
-  /// This phrase bypasses the BIP-39 word-list check and grants access to the
-  /// global recharge-history view after PIN authentication.
+  /// Set at build time via `--dart-define=ADMIN_PHRASE=<phrase>`.
+  /// When not set the admin account is disabled and cannot be imported.
   static const String adminRecoveryPhrase =
-      'immobilier detin kouekoue yovozin';
+      String.fromEnvironment('ADMIN_PHRASE', defaultValue: '');
 
   /// Fixed userId for the administrator account — stable across reinstalls.
   static const String _adminUserId = 'CS-ADMIN';
 
-  /// SHA-256 hash of the administrator PIN, pre-computed and stored at import time
-  /// so the admin can authenticate without manually setting a PIN.
-  static final String _adminPinHash = crypto.sha256
-      .convert(utf8.encode('817319'))
-      .toString();
+  /// SHA-256 hash of the administrator PIN, derived at build time from the
+  /// `--dart-define=ADMIN_PIN=<pin>` value.
+  /// When ADMIN_PIN is not set, no PIN is pre-configured and the admin must
+  /// set one manually after importing the account.
+  static final String _adminPinHash = () {
+    const pin = String.fromEnvironment('ADMIN_PIN', defaultValue: '');
+    if (pin.isEmpty) return '';
+    return crypto.sha256.convert(utf8.encode(pin)).toString();
+  }();
 
   WalletService({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -192,8 +196,18 @@ class WalletService {
         _isAdminPhrase(normalized);
   }
 
-  static bool _isAdminPhrase(String phrase) =>
-      phrase == adminRecoveryPhrase;
+  static bool _isAdminPhrase(String phrase) {
+    if (adminRecoveryPhrase.isEmpty) return false;
+    // Constant-time comparison to prevent timing-based attacks.
+    final a = utf8.encode(phrase);
+    final b = utf8.encode(adminRecoveryPhrase);
+    if (a.length != b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) {
+      diff |= a[i] ^ b[i];
+    }
+    return diff == 0;
+  }
 
   bool _isFourWordRecoveryPhrase(String phrase) {
     // Expects an already-normalized phrase (pure alphabetic words, single spaces).
@@ -266,14 +280,18 @@ class WalletService {
       _storage.write(key: _Keys.mnemonic, value: normalized),
       _storage.write(key: _Keys.privateKey, value: privateKeyHex),
       _storage.write(key: _Keys.address, value: address),
-      _storage.write(key: _Keys.hasPinEnabled, value: isAdminAccount.toString()),
+      // hasPinEnabled is true for admin only when a PIN was supplied at build time.
+      _storage.write(
+        key: _Keys.hasPinEnabled,
+        value: (isAdminAccount && _adminPinHash.isNotEmpty).toString(),
+      ),
       _storage.write(key: _Keys.hasBiometricsEnabled, value: 'false'),
       _storage.write(key: _Keys.userId, value: userId),
       _storage.write(key: _Keys.isAdmin, value: isAdminAccount.toString()),
     ];
 
-    // Pre-configure the fixed PIN for the admin account so no manual setup is needed.
-    if (isAdminAccount) {
+    // Pre-configure the admin PIN only when ADMIN_PIN was provided at build time.
+    if (isAdminAccount && _adminPinHash.isNotEmpty) {
       writes.add(_storage.write(key: _Keys.pinHash, value: _adminPinHash));
     }
 
@@ -281,7 +299,7 @@ class WalletService {
 
     return WalletModel(
       address: address,
-      hasPinEnabled: isAdminAccount,
+      hasPinEnabled: isAdminAccount && _adminPinHash.isNotEmpty,
       hasBiometricsEnabled: false,
       userId: userId,
       isAdmin: isAdminAccount,

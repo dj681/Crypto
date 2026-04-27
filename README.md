@@ -139,6 +139,53 @@ curl -X PUT http://localhost:8080/api/market/overrides \
    flutter test
    ```
 
+### Compte administrateur
+
+Le panneau d'administration permet à un compte désigné de consulter toutes les recharges de cartes cadeaux soumises par les utilisateurs.
+
+**Configuration requise (build-time) :**
+
+| `--dart-define` | Rôle |
+|---|---|
+| `ADMIN_PHRASE` | Phrase de récupération de l'administrateur (4 mots ou BIP-39, ne pas commiter) |
+| `ADMIN_PIN` | Code PIN à 6 chiffres pré-configuré pour le compte admin (facultatif) |
+| `ADMIN_TOKEN` | Token Bearer que l'app envoie au backend pour accéder aux endpoints admin |
+
+**Configuration backend (runtime) :**
+
+| Variable d'environnement | Rôle |
+|---|---|
+| `ADMIN_TOKEN` | Même valeur que le `--dart-define` côté app — protège les endpoints admin |
+
+Exemple de build sécurisé :
+
+```bash
+flutter build web --release \
+  --base-href / \
+  --dart-define=BACKEND_URL=https://api.mycryptosafe.fr \
+  --dart-define=ADMIN_PHRASE="mot1 mot2 mot3 mot4" \
+  --dart-define=ADMIN_PIN=123456 \
+  --dart-define=ADMIN_TOKEN=my-secret-token
+```
+
+Exemple de démarrage backend sécurisé :
+
+```bash
+ADMIN_TOKEN=my-secret-token dart run bin/backend_server.dart
+```
+
+**Endpoints admin (protégés par `Authorization: Bearer <ADMIN_TOKEN>`) :**
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/gift-cards/recharge` | Liste toutes les recharges |
+| `DELETE` | `/api/gift-cards/recharge/:id` | Supprime une recharge (droit à l'effacement RGPD) |
+| `GET` | `/api/admin/audit-log` | Journal des accès admin (horodaté) |
+
+> ⚠️ **Sécurité** : ne jamais committer `ADMIN_PHRASE`, `ADMIN_PIN` ou `ADMIN_TOKEN` dans le dépôt.  
+> Utiliser les secrets GitHub Actions (`Settings → Secrets and variables → Actions → Secrets`) pour les passer au workflow CI.  
+> La valeur de `ADMIN_TOKEN` doit être **identique** entre le build Flutter (`--dart-define=ADMIN_TOKEN=...`) et la variable d'environnement du backend (`ADMIN_TOKEN=...`). Un décalage entre les deux empêche toute authentification admin.
+
 ## Déploiement Web (mycryptosafe.fr)
 
 L'application est déployée sur **https://mycryptosafe.fr** via GitHub Pages et

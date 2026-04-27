@@ -80,6 +80,11 @@ class GiftCardService {
       String.fromEnvironment('BACKEND_URL', defaultValue: '');
   static final Uri? _backendUri = _parseUri(_backendBaseUrl);
 
+  /// Bearer token for admin-only backend endpoints (e.g. listing all recharges).
+  /// Set at build time via `--dart-define=ADMIN_TOKEN=<token>`.
+  static const String _adminToken =
+      String.fromEnvironment('ADMIN_TOKEN', defaultValue: '');
+
   static Uri? _parseUri(String value) {
     final v = value.trim();
     if (v.isEmpty) return null;
@@ -143,14 +148,21 @@ class GiftCardService {
 
   /// Fetches all gift-card recharge records from the backend.
   ///
-  /// Returns an empty list when no backend is configured or on error.
+  /// Requires a valid [ADMIN_TOKEN] to be set at build time; returns an empty
+  /// list when no backend is configured, when the token is missing, or on error.
   Future<List<Map<String, dynamic>>> fetchRecharges() async {
     final uri = _rechargeUri;
     if (uri == null) return [];
+    // Admin token is required — fail early rather than making an unauthenticated request.
+    if (_adminToken.isEmpty) return [];
 
     try {
+      final headers = <String, String>{'Accept': 'application/json'};
+      if (_adminToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $_adminToken';
+      }
       final response = await _httpClient
-          .get(uri, headers: {'Accept': 'application/json'})
+          .get(uri, headers: headers)
           .timeout(const Duration(seconds: 20));
 
       if (response.statusCode != 200) return [];

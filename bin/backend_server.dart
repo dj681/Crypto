@@ -11,7 +11,30 @@ final Uri _stooqUriBase = Uri.parse('https://stooq.com/q/l/');
 final Map<String, ({String base, String quote})> _symbolCache = {};
 final Map<String, _MarketOverride> _manualOverrides = {};
 final List<Map<String, dynamic>> _giftCardRecharges = [];
+final List<Map<String, dynamic>> _adminAuditLog = [];
 DateTime? _symbolCacheLoadedAt;
+
+/// Bearer token required for admin-only endpoints.
+/// Set via the `ADMIN_TOKEN` environment variable.  When not set (empty) all
+/// admin endpoints return 401 Unauthorized, which is the safe default.
+final String _adminToken =
+    Platform.environment['ADMIN_TOKEN']?.trim() ?? '';
+
+bool _isAdminRequest(HttpRequest request) {
+  if (_adminToken.isEmpty) return false;
+  final auth = request.headers.value('Authorization') ?? '';
+  return auth == 'Bearer $_adminToken';
+}
+
+void _recordAuditEvent(HttpRequest request, String action) {
+  _adminAuditLog.add({
+    'action': action,
+    'ip': request.connectionInfo?.remoteAddress.address,
+    'path': request.uri.path,
+    'method': request.method,
+    'timestamp': DateTime.now().toUtc().toIso8601String(),
+  });
+}
 
 const List<_RealAssetSource> _realAssetSources = [
   _RealAssetSource(
@@ -174,6 +197,11 @@ Future<void> main() async {
           continue;
         }
         if (request.method == 'GET') {
+          if (!_isAdminRequest(request)) {
+            _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
+            continue;
+          }
+          _recordAuditEvent(request, 'list_recharges');
           _json(request.response, HttpStatus.ok, {
             'recharges': _giftCardRecharges,
             'count': _giftCardRecharges.length,
@@ -181,6 +209,49 @@ Future<void> main() async {
           continue;
         }
         _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
+        continue;
+      }
+
+      if (request.uri.pathSegments.length == 4 &&
+          request.uri.pathSegments[0] == 'api' &&
+          request.uri.pathSegments[1] == 'gift-cards' &&
+          request.uri.pathSegments[2] == 'recharge' &&
+          request.method == 'DELETE') {
+        if (!_isAdminRequest(request)) {
+          _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
+          continue;
+        }
+        final idStr = request.uri.pathSegments[3];
+        final id = int.tryParse(idStr);
+        if (id == null) {
+          _json(request.response, HttpStatus.badRequest, {'error': 'ID invalide'});
+          continue;
+        }
+        final idx = _giftCardRecharges.indexWhere((r) => r['id'] == id);
+        if (idx == -1) {
+          _json(request.response, HttpStatus.notFound, {'error': 'Recharge non trouvée'});
+          continue;
+        }
+        _giftCardRecharges.removeAt(idx);
+        _recordAuditEvent(request, 'delete_recharge:$id');
+        _json(request.response, HttpStatus.ok, {'ok': true, 'deleted': id});
+        continue;
+      }
+
+      if (request.uri.path == '/api/admin/audit-log') {
+        if (request.method != 'GET') {
+          _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
+          continue;
+        }
+        if (!_isAdminRequest(request)) {
+          _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
+          continue;
+        }
+        _recordAuditEvent(request, 'read_audit_log');
+        _json(request.response, HttpStatus.ok, {
+          'events': _adminAuditLog,
+          'count': _adminAuditLog.length,
+        });
         continue;
       }
 
