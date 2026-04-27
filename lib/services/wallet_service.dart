@@ -12,6 +12,55 @@ import '../constants/bip39_english_wordlist.dart' as bip39_wordlist;
 import '../models/wallet.dart';
 import '../models/tx_record.dart';
 
+// ---------------------------------------------------------------------------
+// Top-level helper — required by compute() which must receive a top-level fn.
+// Derives a 64-byte seed from [cleaned] (already trimmed & lower-cased):
+//   • BIP-39 mnemonics  → standard bip39.mnemonicToSeed
+//   • 4-word phrases    → PBKDF2-HMAC-SHA512 (2 000 000 iterations)
+//   • admin phrase      → falls through to PBKDF2 path
+// This runs in a background isolate (web worker on Flutter Web) so the UI
+// thread is never blocked by the CPU-intensive PBKDF2 loop.
+// ---------------------------------------------------------------------------
+Uint8List _deriveSeedIsolate(String cleaned) {
+  if (bip39.validateMnemonic(cleaned)) {
+    return bip39.mnemonicToSeed(cleaned);
+  }
+
+  const saltPrefix = WalletService.recoverySaltPrefix;
+  const iterations = WalletService.recoveryPbkdf2Iterations;
+  const hmacLength = 64; // SHA-512 output in bytes
+  const keyLength = 64;
+
+  final phraseSalt = crypto.sha256
+      .convert(utf8.encode('$saltPrefix$cleaned'))
+      .bytes;
+  final salt = Uint8List.fromList(phraseSalt);
+  final password = Uint8List.fromList(utf8.encode(cleaned));
+  final hmac = crypto.Hmac(crypto.sha512, password);
+
+  final blocks = (keyLength / hmacLength).ceil();
+  final output = BytesBuilder(copy: false);
+
+  for (var block = 1; block <= blocks; block++) {
+    final blockBytes = Uint8List(4);
+    ByteData.view(blockBytes.buffer).setUint32(0, block, Endian.big);
+    final saltBlock = Uint8List.fromList([...salt, ...blockBytes]);
+
+    var u = Uint8List.fromList(hmac.convert(saltBlock).bytes);
+    final t = Uint8List.fromList(u);
+
+    for (var i = 1; i < iterations; i++) {
+      u = Uint8List.fromList(hmac.convert(u).bytes);
+      for (var byteIndex = 0; byteIndex < hmacLength; byteIndex++) {
+        t[byteIndex] ^= u[byteIndex];
+      }
+    }
+    output.add(t);
+  }
+
+  return Uint8List.fromList(output.takeBytes().sublist(0, keyLength));
+}
+
 /// Keys used in FlutterSecureStorage.
 class _Keys {
   static const String mnemonic = 'wallet_mnemonic';
@@ -38,9 +87,11 @@ class WalletService {
   static const int _privateKeyByteLength = 32;
   static const int _recoveryWordCount = 4;
   // Slows offline brute force on short 4-word phrases while keeping UX acceptable.
-  static const int _recoveryPbkdf2Iterations = 2000000;
+  // Exposed as public so the top-level compute function can reference it.
+  static const int recoveryPbkdf2Iterations = 2000000;
   // Deterministic salt prefix: recovery remains possible from phrase only.
-  static const String _recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
+  // Exposed as public so the top-level compute function can reference it.
+  static const String recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
   static final Set<String> _bip39WordSet =
       Set.unmodifiable(bip39_wordlist.bip39EnglishWordlist.toSet());
 
@@ -125,52 +176,14 @@ class WalletService {
     return words.every(_bip39WordSet.contains);
   }
 
-  Uint8List _seedFromMnemonic(String mnemonic) {
+  /// Derives the 64-byte seed from [mnemonic] in a background isolate so that
+  /// the PBKDF2 loop never blocks the UI thread (critical on Flutter Web where
+  /// Dart runs as JavaScript on a single thread).
+  Future<Uint8List> _seedFromMnemonic(String mnemonic) {
     final cleaned = mnemonic.trim().toLowerCase();
-    if (bip39.validateMnemonic(cleaned)) {
-      return bip39.mnemonicToSeed(cleaned);
-    }
-    final phraseSalt = crypto.sha256
-        .convert(utf8.encode('$_recoverySaltPrefix$cleaned'))
-        .bytes;
-    return _pbkdf2HmacSha512(
-      password: Uint8List.fromList(utf8.encode(cleaned)),
-      salt: Uint8List.fromList(phraseSalt),
-      iterations: _recoveryPbkdf2Iterations,
-      keyLength: 64,
-    );
-  }
-
-  Uint8List _pbkdf2HmacSha512({
-    required Uint8List password,
-    required Uint8List salt,
-    required int iterations,
-    required int keyLength,
-  }) {
-    const hmacLength = 64; // SHA-512 output size in bytes.
-    final blocks = (keyLength / hmacLength).ceil();
-    final output = BytesBuilder(copy: false);
-    final hmac = crypto.Hmac(crypto.sha512, password);
-
-    for (var block = 1; block <= blocks; block++) {
-      final blockBytes = Uint8List(4);
-      final blockView = ByteData.view(blockBytes.buffer);
-      blockView.setUint32(0, block, Endian.big);
-      final saltBlock = Uint8List.fromList([...salt, ...blockBytes]);
-
-      var u = Uint8List.fromList(hmac.convert(saltBlock).bytes);
-      final t = Uint8List.fromList(u);
-
-      for (var i = 1; i < iterations; i++) {
-        u = Uint8List.fromList(hmac.convert(u).bytes);
-        for (var j = 0; j < hmacLength; j++) {
-          t[j] ^= u[j];
-        }
-      }
-      output.add(t);
-    }
-
-    return Uint8List.fromList(output.takeBytes().sublist(0, keyLength));
+    // compute() spawns a web worker on Flutter Web and a native Isolate on
+    // other platforms — _deriveSeedIsolate must be a top-level function.
+    return compute(_deriveSeedIsolate, cleaned);
   }
 
   // ── wallet creation / import ──────────────────────────────────────────────
@@ -196,7 +209,7 @@ class WalletService {
     final cleaned = mnemonic.trim().toLowerCase();
     final isAdminAccount = _isAdminPhrase(cleaned);
 
-    final seed = _seedFromMnemonic(cleaned);
+    final seed = await _seedFromMnemonic(cleaned);
     final privateKeyHex = _privateKeyHexFromSeed(seed);
     final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
@@ -257,7 +270,7 @@ class WalletService {
           mnemonic.isNotEmpty &&
           validateMnemonic(mnemonic)) {
         try {
-          final seed = _seedFromMnemonic(mnemonic);
+          final seed = await _seedFromMnemonic(mnemonic);
           final privateKeyHex = _privateKeyHexFromSeed(seed);
           final credentials = EthPrivateKey.fromHex(privateKeyHex);
           address = credentials.address.hexEip55;
