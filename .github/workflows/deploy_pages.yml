@@ -36,11 +36,14 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter web
-        run: >
-          flutter build web
-          --release
-          --base-href /
-          --dart-define=PWA_URL=https://mycryptosafe.fr/
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: |
+          flutter build web \
+            --release \
+            --base-href / \
+            --dart-define=PWA_URL=https://mycryptosafe.fr/ \
+            ${BACKEND_URL:+--dart-define=BACKEND_URL=$BACKEND_URL}
 
       - name: Write CNAME
         run: echo "mycryptosafe.fr" > build/web/CNAME
