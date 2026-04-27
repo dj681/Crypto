@@ -159,31 +159,65 @@ class WalletService {
     return words.join(' ');
   }
 
+  /// Normalises a raw phrase for validation and derivation:
+  ///   • lower-cases everything
+  ///   • extracts only pure-alphabetic tokens (strips leading/trailing digits,
+  ///     punctuation, numbering like "1.", commas, etc.)
+  ///   • joins tokens with a single space
+  ///
+  /// This lets users enter "1. word1 2. word2 3. word3 4. word4" (as shown on
+  /// screen with word numbers) and still have it accepted.
+  static String _normalizePhrase(String phrase) {
+    return phrase
+        .toLowerCase()
+        .split(RegExp(r'[^a-z]+'))
+        .where((w) => w.isNotEmpty)
+        .join(' ');
+  }
+
   /// Returns true when [mnemonic] is a supported recovery phrase.
+  ///
+  /// Accepts:
+  ///   • Valid BIP-39 mnemonics (12 / 15 / 18 / 21 / 24 words)
+  ///   • 4-word phrases whose words are all in the BIP-39 English wordlist
+  ///   • The administrator recovery phrase
+  ///
+  /// Minor formatting noise (leading numbers, punctuation, extra whitespace)
+  /// is stripped before checking so that phrases copied with word-numbering
+  /// (e.g. "1. word 2. word 3. word 4. word") are also accepted.
   bool validateMnemonic(String mnemonic) {
-    final cleaned = mnemonic.trim().toLowerCase();
-    return bip39.validateMnemonic(cleaned) ||
-        _isFourWordRecoveryPhrase(cleaned) ||
-        _isAdminPhrase(cleaned);
+    final normalized = _normalizePhrase(mnemonic);
+    return bip39.validateMnemonic(normalized) ||
+        _isFourWordRecoveryPhrase(normalized) ||
+        _isAdminPhrase(normalized);
   }
 
   static bool _isAdminPhrase(String phrase) =>
       phrase == adminRecoveryPhrase;
 
   bool _isFourWordRecoveryPhrase(String phrase) {
-    final words = phrase.split(RegExp(r'\s+'));
+    // Expects an already-normalised phrase (pure alphabetic words, single spaces).
+    final words = phrase.split(' ').where((w) => w.isNotEmpty).toList();
     if (words.length != _recoveryWordCount) return false;
     return words.every(_bip39WordSet.contains);
+  }
+
+  /// Returns the list of words in [mnemonic] that are not in the BIP-39
+  /// English wordlist.  Used to produce actionable error messages.
+  List<String> findUnrecognizedWords(String mnemonic) {
+    final normalized = _normalizePhrase(mnemonic);
+    final words = normalized.split(' ').where((w) => w.isNotEmpty).toList();
+    return words.where((w) => !_bip39WordSet.contains(w)).toList();
   }
 
   /// Derives the 64-byte seed from [mnemonic] in a background isolate so that
   /// the PBKDF2 loop never blocks the UI thread (critical on Flutter Web where
   /// Dart runs as JavaScript on a single thread).
   Future<Uint8List> _seedFromMnemonic(String mnemonic) {
-    final cleaned = mnemonic.trim().toLowerCase();
+    final normalized = _normalizePhrase(mnemonic);
     // compute() spawns a web worker on Flutter Web and a native Isolate on
     // other platforms — _deriveSeedIsolate must be a top-level function.
-    return compute(_deriveSeedIsolate, cleaned);
+    return compute(_deriveSeedIsolate, normalized);
   }
 
   // ── wallet creation / import ──────────────────────────────────────────────
@@ -196,27 +230,40 @@ class WalletService {
   }
 
   /// Imports a wallet from a user-supplied mnemonic phrase.
-  /// Throws [ArgumentError] if the mnemonic is invalid.
+  /// Throws [ArgumentError] if the mnemonic is invalid; the message includes
+  /// the specific word(s) that were not recognised when the phrase looks like a
+  /// 4-word recovery phrase with at least one unrecognised word.
   Future<WalletModel> importWallet(String mnemonic) async {
-    final cleaned = mnemonic.trim().toLowerCase();
-    if (!validateMnemonic(cleaned)) {
-      throw ArgumentError("La phrase mnémonique fournie n'est pas valide.");
+    final normalized = _normalizePhrase(mnemonic);
+    if (!validateMnemonic(normalized)) {
+      // Provide word-level feedback for the 4-word recovery-phrase path.
+      final words = normalized.split(' ').where((w) => w.isNotEmpty).toList();
+      if (words.length == _recoveryWordCount) {
+        final bad = words.where((w) => !_bip39WordSet.contains(w)).toList();
+        if (bad.isNotEmpty) {
+          throw ArgumentError(
+            'Mot(s) non reconnu(s) : ${bad.join(', ')}. '
+            'Vérifiez l\'orthographe — les mots doivent être en anglais.',
+          );
+        }
+      }
+      throw ArgumentError("La phrase de récupération fournie n'est pas valide.");
     }
-    return _deriveAndPersist(cleaned);
+    return _deriveAndPersist(normalized);
   }
 
   Future<WalletModel> _deriveAndPersist(String mnemonic) async {
-    final cleaned = mnemonic.trim().toLowerCase();
-    final isAdminAccount = _isAdminPhrase(cleaned);
+    final normalized = _normalizePhrase(mnemonic);
+    final isAdminAccount = _isAdminPhrase(normalized);
 
-    final seed = await _seedFromMnemonic(cleaned);
+    final seed = await _seedFromMnemonic(normalized);
     final privateKeyHex = _privateKeyHexFromSeed(seed);
     final credentials = EthPrivateKey.fromHex(privateKeyHex);
     final address = credentials.address.hexEip55;
     final userId = isAdminAccount ? _adminUserId : _generateUserId();
 
     final writes = [
-      _storage.write(key: _Keys.mnemonic, value: cleaned),
+      _storage.write(key: _Keys.mnemonic, value: normalized),
       _storage.write(key: _Keys.privateKey, value: privateKeyHex),
       _storage.write(key: _Keys.address, value: address),
       _storage.write(key: _Keys.hasPinEnabled, value: isAdminAccount.toString()),

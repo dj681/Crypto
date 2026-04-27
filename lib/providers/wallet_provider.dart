@@ -71,8 +71,8 @@ class WalletProvider extends ChangeNotifier {
       _history = await _service.loadHistory();
       _status = WalletStatus.ready;
       notifyListeners();
-    } on ArgumentError {
-      _setError('La phrase mnémonique fournie n\'est pas valide.');
+    } on ArgumentError catch (e) {
+      _setError(e.message as String? ?? 'La phrase de récupération fournie n\'est pas valide.');
       rethrow;
     } catch (e) {
       _setError(e.toString());
