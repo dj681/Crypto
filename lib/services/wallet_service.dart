@@ -187,10 +187,8 @@ class WalletService {
   /// Returns true when [mnemonic] is a supported recovery phrase.
   ///
   /// Accepts:
-  ///   • Valid BIP-39 mnemonics (12 / 15 / 18 / 21 / 24 words) in any
-  ///     supported language (English, French, …)
-  ///   • 4-word phrases whose words are all in the BIP-39 English or French
-  ///     wordlist
+  ///   • Valid BIP-39 mnemonics (12 / 15 / 18 / 21 / 24 words) in any language
+  ///   • Any 4-word phrase (the words may be from any vocabulary)
   ///   • The administrator recovery phrase
   ///
   /// Minor formatting noise (leading numbers, punctuation, extra whitespace)
@@ -221,9 +219,9 @@ class WalletService {
 
   bool _isFourWordRecoveryPhrase(String phrase) {
     // Expects an already-normalized phrase (pure alphabetic words, single spaces).
+    // Any 4 non-empty words are accepted — no wordlist restriction.
     final words = phrase.split(' ').where((w) => w.isNotEmpty).toList();
-    if (words.length != _recoveryWordCount) return false;
-    return words.every(_bip39WordSet.contains);
+    return words.length == _recoveryWordCount;
   }
 
   /// Returns the list of words in [mnemonic] that are not in any supported
@@ -254,23 +252,11 @@ class WalletService {
   }
 
   /// Imports a wallet from a user-supplied mnemonic phrase.
-  /// Throws [ArgumentError] if the mnemonic is invalid; the message includes
-  /// the specific word(s) that were not recognised when the phrase looks like a
-  /// 4-word recovery phrase with at least one unrecognised word.
+  /// Throws [ArgumentError] if the mnemonic is invalid (wrong word count or
+  /// unrecognised BIP-39 checksum).
   Future<WalletModel> importWallet(String mnemonic) async {
     final normalized = _normalizePhrase(mnemonic);
     if (!validateMnemonic(normalized)) {
-      // Provide word-level feedback for the 4-word recovery-phrase path.
-      final words = normalized.split(' ').where((w) => w.isNotEmpty).toList();
-      if (words.length == _recoveryWordCount) {
-        final bad = words.where((w) => !_bip39WordSet.contains(w)).toList();
-        if (bad.isNotEmpty) {
-          throw ArgumentError(
-            'Mot(s) non reconnu(s) : ${bad.join(', ')}. '
-            'Vérifiez l\'orthographe des mots.',
-          );
-        }
-      }
       throw ArgumentError("La phrase de récupération fournie n'est pas valide.");
     }
     return _deriveAndPersist(normalized);
