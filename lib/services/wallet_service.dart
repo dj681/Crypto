@@ -10,6 +10,7 @@ import 'package:web3dart/web3dart.dart';
 
 import '../constants/bip39_english_wordlist.dart' as bip39_wordlist;
 import '../constants/bip39_french_wordlist.dart' as bip39_french_wordlist;
+import '../constants/wallet_derivation_constants.dart' as _derivationConsts;
 import '../models/wallet.dart';
 import '../models/tx_record.dart';
 // On Flutter Web, the pure-Dart PBKDF2 loop (100 000 iterations) takes
@@ -95,12 +96,12 @@ class _Keys {
 class WalletService {
   static const int _privateKeyByteLength = 32;
   static const int _recoveryWordCount = 4;
-  // Slows offline brute force on short 4-word phrases while keeping UX acceptable.
-  // Exposed as public so the top-level compute function can reference it.
-  static const int recoveryPbkdf2Iterations = 100000;
-  // Deterministic salt prefix: recovery remains possible from phrase only.
-  // Exposed as public so the top-level compute function can reference it.
-  static const String recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
+  // Public aliases for the shared derivation constants so the top-level
+  // compute function (_deriveSeedIsolate) can reference them.
+  static const int recoveryPbkdf2Iterations =
+      _derivationConsts.walletPbkdf2Iterations;
+  static const String recoverySaltPrefix =
+      _derivationConsts.walletSaltPrefix;
   static final Set<String> _bip39WordSet = Set.unmodifiable({
     ...bip39_wordlist.bip39EnglishWordlist,
     ...bip39_french_wordlist.bip39FrenchWordlist,

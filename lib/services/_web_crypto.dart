@@ -6,12 +6,7 @@ import 'dart:typed_data';
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:crypto/crypto.dart' as crypto;
 
-// ---------------------------------------------------------------------------
-// These constants MUST stay in sync with WalletService (circular import
-// avoided intentionally – they are immutable protocol values).
-// ---------------------------------------------------------------------------
-const _saltPrefix = 'my-crypto-safe-recovery-v1:';
-const _pbkdf2Iterations = 100000;
+import '../constants/wallet_derivation_constants.dart' as _derivationConsts;
 
 // ---------------------------------------------------------------------------
 // dart:js_interop bindings for the browser's SubtleCrypto API.
@@ -56,7 +51,11 @@ Future<Uint8List> deriveSeedWithWebCrypto(String normalized) async {
   try {
     // Compute the PBKDF2 salt: SHA-256(saltPrefix + phrase).
     final saltBytes = Uint8List.fromList(
-      crypto.sha256.convert(utf8.encode('$_saltPrefix$normalized')).bytes,
+      crypto.sha256
+          .convert(utf8.encode(
+            '${_derivationConsts.walletSaltPrefix}$normalized',
+          ))
+          .bytes,
     );
     final passwordBytes = Uint8List.fromList(utf8.encode(normalized));
 
@@ -74,7 +73,7 @@ Future<Uint8List> deriveSeedWithWebCrypto(String normalized) async {
     algorithm['name'] = 'PBKDF2'.toJS;
     algorithm['hash'] = 'SHA-512'.toJS;
     algorithm['salt'] = saltBytes.toJS;
-    algorithm['iterations'] = _pbkdf2Iterations.toJS;
+    algorithm['iterations'] = _derivationConsts.walletPbkdf2Iterations.toJS;
 
     // Step 3 – derive 512 bits (64 bytes).
     final derivedBuffer = await _jsDeriveBits(

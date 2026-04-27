@@ -95,7 +95,7 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
       setState(() => _error = e.message);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Erreur lors de l\'import : $e');
+      setState(() => _error = 'Erreur lors de l\'import\u00a0: $e');
     } finally {
       if (mounted) {
         setState(() {
