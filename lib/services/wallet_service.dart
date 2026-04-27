@@ -198,9 +198,12 @@ class WalletService {
 
   static bool _isAdminPhrase(String phrase) {
     if (adminRecoveryPhrase.isEmpty) return false;
+    // Normalize the configured admin phrase so that it tolerates the same
+    // formatting leniency as user input (e.g. mixed case, extra spaces,
+    // punctuation in --dart-define=ADMIN_PHRASE=...).
     // Constant-time comparison to prevent timing-based attacks.
     final a = utf8.encode(phrase);
-    final b = utf8.encode(adminRecoveryPhrase);
+    final b = utf8.encode(_normalizePhrase(adminRecoveryPhrase));
     if (a.length != b.length) return false;
     var diff = 0;
     for (var i = 0; i < a.length; i++) {
