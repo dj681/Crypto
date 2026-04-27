@@ -16,7 +16,7 @@ import '../models/tx_record.dart';
 // Top-level helper — required by compute() which must receive a top-level fn.
 // Derives a 64-byte seed from [cleaned] (already trimmed & lower-cased):
 //   • BIP-39 mnemonics  → standard bip39.mnemonicToSeed
-//   • 4-word phrases    → PBKDF2-HMAC-SHA512 (2 000 000 iterations)
+//   • 4-word phrases    → PBKDF2-HMAC-SHA512 (100 000 iterations)
 //   • admin phrase      → falls through to PBKDF2 path
 // This runs in a background isolate (web worker on Flutter Web) so the UI
 // thread is never blocked by the CPU-intensive PBKDF2 loop.
@@ -88,7 +88,7 @@ class WalletService {
   static const int _recoveryWordCount = 4;
   // Slows offline brute force on short 4-word phrases while keeping UX acceptable.
   // Exposed as public so the top-level compute function can reference it.
-  static const int recoveryPbkdf2Iterations = 2000000;
+  static const int recoveryPbkdf2Iterations = 100000;
   // Deterministic salt prefix: recovery remains possible from phrase only.
   // Exposed as public so the top-level compute function can reference it.
   static const String recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
