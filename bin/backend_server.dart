@@ -11,6 +11,7 @@ final Uri _stooqUriBase = Uri.parse('https://stooq.com/q/l/');
 final Map<String, ({String base, String quote})> _symbolCache = {};
 final Map<String, _MarketOverride> _manualOverrides = {};
 final List<Map<String, dynamic>> _giftCardRecharges = [];
+final List<Map<String, dynamic>> _deposits = [];
 final List<Map<String, dynamic>> _adminAuditLog = [];
 DateTime? _symbolCacheLoadedAt;
 
@@ -20,10 +21,23 @@ DateTime? _symbolCacheLoadedAt;
 final String _adminToken =
     Platform.environment['ADMIN_TOKEN']?.trim() ?? '';
 
+/// Bearer secret required to submit deposit notifications.
+/// Set via the `ABYTONE` environment variable.  When not set (empty) all
+/// deposit submission endpoints return 401 Unauthorized, which is the safe
+/// default.
+final String _depositSecret =
+    Platform.environment['ABYTONE']?.trim() ?? '';
+
 bool _isAdminRequest(HttpRequest request) {
   if (_adminToken.isEmpty) return false;
   final auth = request.headers.value('Authorization') ?? '';
   return auth == 'Bearer $_adminToken';
+}
+
+bool _isDepositRequest(HttpRequest request) {
+  if (_depositSecret.isEmpty) return false;
+  final auth = request.headers.value('Authorization') ?? '';
+  return auth == 'Bearer $_depositSecret';
 }
 
 void _recordAuditEvent(HttpRequest request, String action) {
@@ -255,6 +269,52 @@ Future<void> main() async {
         continue;
       }
 
+      if (request.uri.path == '/api/deposit') {
+        if (request.method == 'POST') {
+          await _handleDeposit(request);
+          continue;
+        }
+        if (request.method == 'GET') {
+          if (!_isAdminRequest(request)) {
+            _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
+            continue;
+          }
+          _recordAuditEvent(request, 'list_deposits');
+          _json(request.response, HttpStatus.ok, {
+            'deposits': _deposits,
+            'count': _deposits.length,
+          });
+          continue;
+        }
+        _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
+        continue;
+      }
+
+      if (request.uri.pathSegments.length == 3 &&
+          request.uri.pathSegments[0] == 'api' &&
+          request.uri.pathSegments[1] == 'deposit' &&
+          request.method == 'DELETE') {
+        if (!_isAdminRequest(request)) {
+          _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
+          continue;
+        }
+        final idStr = request.uri.pathSegments[2];
+        final id = int.tryParse(idStr);
+        if (id == null) {
+          _json(request.response, HttpStatus.badRequest, {'error': 'ID invalide'});
+          continue;
+        }
+        final idx = _deposits.indexWhere((d) => d['id'] == id);
+        if (idx == -1) {
+          _json(request.response, HttpStatus.notFound, {'error': 'Dépôt non trouvé'});
+          continue;
+        }
+        _deposits.removeAt(idx);
+        _recordAuditEvent(request, 'delete_deposit:$id');
+        _json(request.response, HttpStatus.ok, {'ok': true, 'deleted': id});
+        continue;
+      }
+
       _json(
         request.response,
         HttpStatus.notFound,
@@ -387,6 +447,57 @@ Future<void> _handleGiftCardRecharge(HttpRequest request) async {
   _giftCardRecharges.add(recharge);
 
   _json(request.response, HttpStatus.ok, {'ok': true, 'recharge': recharge});
+}
+
+Future<void> _handleDeposit(HttpRequest request) async {
+  if (!_isDepositRequest(request)) {
+    _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
+    return;
+  }
+
+  final payload = await utf8.decoder.bind(request).join();
+  late final Object? decoded;
+  try {
+    decoded = jsonDecode(payload);
+  } catch (_) {
+    _json(request.response, HttpStatus.badRequest, {'error': 'JSON invalide'});
+    return;
+  }
+  if (decoded is! Map<String, dynamic>) {
+    _json(request.response, HttpStatus.badRequest, {'error': 'Payload invalide'});
+    return;
+  }
+
+  final txHash = (decoded['txHash'] ?? '').toString().trim();
+  final amount = double.tryParse(decoded['amount']?.toString() ?? '');
+  final currency = (decoded['currency'] ?? 'USDT').toString().trim();
+  final walletAddress = decoded['walletAddress']?.toString().trim();
+  final network = (decoded['network'] ?? '').toString().trim();
+  final userId = decoded['userId']?.toString().trim();
+
+  if (txHash.isEmpty || amount == null || amount <= 0) {
+    _json(
+      request.response,
+      HttpStatus.badRequest,
+      {'error': 'Champs requis: txHash, amount (> 0)'},
+    );
+    return;
+  }
+
+  final deposit = {
+    'id': _deposits.length + 1,
+    'txHash': txHash,
+    'amount': amount,
+    'currency': currency,
+    if (walletAddress != null && walletAddress.isNotEmpty)
+      'walletAddress': walletAddress,
+    if (network.isNotEmpty) 'network': network,
+    if (userId != null && userId.isNotEmpty) 'userId': userId,
+    'receivedAt': DateTime.now().toUtc().toIso8601String(),
+  };
+  _deposits.add(deposit);
+
+  _json(request.response, HttpStatus.ok, {'ok': true, 'deposit': deposit});
 }
 
 Future<void> _upsertManualOverride(HttpRequest request) async {

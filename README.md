@@ -156,6 +156,7 @@ Le panneau d'administration permet à un compte désigné de consulter toutes le
 | Variable d'environnement | Rôle |
 |---|---|
 | `ADMIN_TOKEN` | Même valeur que le `--dart-define` côté app — protège les endpoints admin |
+| `ABYTONE` | Secret de dépôt — authentifie les notifications de dépôt entrant (`POST /api/deposit`) |
 
 Exemple de build sécurisé :
 
@@ -171,7 +172,7 @@ flutter build web --release \
 Exemple de démarrage backend sécurisé :
 
 ```bash
-ADMIN_TOKEN=my-secret-token dart run bin/backend_server.dart
+ADMIN_TOKEN=my-secret-token ABYTONE=my-deposit-secret dart run bin/backend_server.dart
 ```
 
 **Endpoints admin (protégés par `Authorization: Bearer <ADMIN_TOKEN>`) :**
@@ -181,8 +182,29 @@ ADMIN_TOKEN=my-secret-token dart run bin/backend_server.dart
 | `GET` | `/api/gift-cards/recharge` | Liste toutes les recharges |
 | `DELETE` | `/api/gift-cards/recharge/:id` | Supprime une recharge (droit à l'effacement RGPD) |
 | `GET` | `/api/admin/audit-log` | Journal des accès admin (horodaté) |
+| `GET` | `/api/deposit` | Liste tous les dépôts enregistrés |
+| `DELETE` | `/api/deposit/:id` | Supprime un dépôt (droit à l'effacement RGPD) |
 
-> ⚠️ **Sécurité** : ne jamais committer `ADMIN_PHRASE`, `ADMIN_PIN` ou `ADMIN_TOKEN` dans le dépôt.  
+**Endpoint dépôt (protégé par `Authorization: Bearer <ABYTONE>`) :**
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/deposit` | Enregistre une notification de dépôt entrant |
+
+Corps de la requête `POST /api/deposit` :
+
+```json
+{
+  "txHash": "0xabc123...",
+  "amount": 100.0,
+  "currency": "USDT",
+  "walletAddress": "0x9aEB4A4d8d888bF8Df8b1F6af6B065DaA516ce50",
+  "network": "BEP20",
+  "userId": "user-id-optionnel"
+}
+```
+
+> ⚠️ **Sécurité** : ne jamais committer `ADMIN_PHRASE`, `ADMIN_PIN`, `ADMIN_TOKEN` ou `ABYTONE` dans le dépôt.  
 > Utiliser les secrets GitHub Actions (`Settings → Secrets and variables → Actions → Secrets`) pour les passer au workflow CI.  
 > La valeur de `ADMIN_TOKEN` doit être **identique** entre le build Flutter (`--dart-define=ADMIN_TOKEN=...`) et la variable d'environnement du backend (`ADMIN_TOKEN=...`). Un décalage entre les deux empêche toute authentification admin.
 
