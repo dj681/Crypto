@@ -105,6 +105,32 @@ void main() {
       expect(service.validateMnemonic(invalidFourWords), isFalse);
     });
 
+    test('validateMnemonic accepts a valid 4-word phrase with numbering (e.g. copied from screen)', () {
+      const numbered = '1. legal 2. winner 3. thank 4. year';
+      expect(service.validateMnemonic(numbered), isTrue);
+    });
+
+    test('validateMnemonic accepts phrase with extra spaces and upper case', () {
+      const messy = '  LEGAL   WINNER  THANK  YEAR  ';
+      expect(service.validateMnemonic(messy), isTrue);
+    });
+
+    test('validateMnemonic accepts phrase with comma separators', () {
+      const commas = 'legal, winner, thank, year';
+      expect(service.validateMnemonic(commas), isTrue);
+    });
+
+    test('findUnrecognizedWords returns unrecognized words', () {
+      const phrase = 'legal badword thank year';
+      final bad = service.findUnrecognizedWords(phrase);
+      expect(bad, equals(['badword']));
+    });
+
+    test('findUnrecognizedWords returns empty list for valid phrase', () {
+      const phrase = 'legal winner thank year';
+      expect(service.findUnrecognizedWords(phrase), isEmpty);
+    });
+
     test('validateMnemonic accepts a known BIP-39 test vector', () {
       const knownMnemonic =
           'abandon abandon abandon abandon abandon abandon '
@@ -139,11 +165,30 @@ void main() {
       expect(wallet.address, startsWith('0x'));
     });
 
+    test('imports a numbered phrase (e.g. "1. word 2. word ...") the same as the clean phrase', () async {
+      const clean = 'legal winner thank year';
+      const numbered = '1. legal 2. winner 3. thank 4. year';
+      final w1 = await service.importWallet(clean);
+      storage = _FakeSecureStorage();
+      service = WalletService(storage: storage);
+      final w2 = await service.importWallet(numbered);
+      expect(w1.address, equals(w2.address));
+    });
+
     test('throws ArgumentError for an invalid mnemonic', () async {
       await expectLater(
         () => service.importWallet('this is clearly not valid'),
         throwsA(isA<ArgumentError>()),
       );
+    });
+
+    test('error message names the unrecognized words', () async {
+      try {
+        await service.importWallet('legal badword thank year');
+        fail('Expected ArgumentError');
+      } on ArgumentError catch (e) {
+        expect(e.message.toString(), contains('badword'));
+      }
     });
   });
 
