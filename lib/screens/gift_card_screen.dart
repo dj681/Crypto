@@ -22,6 +22,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
   GiftCardType _selectedType = giftCardTypes.first;
   String _currency = 'USD';
   bool _isLoading = false;
+  bool _gdprConsent = false;
 
   @override
   void dispose() {
@@ -32,6 +33,16 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_gdprConsent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Veuillez accepter la collecte de données avant de continuer.',
+          ),
+        ),
+      );
+      return;
+    }
 
     final confirmed = await _confirmDialog();
     if (!confirmed) return;
@@ -239,7 +250,22 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+
+              // ── Consentement RGPD ─────────────────────────────────────────
+              CheckboxListTile(
+                value: _gdprConsent,
+                onChanged: (v) => setState(() => _gdprConsent = v ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text(
+                  'J\'accepte que les informations de cette recharge (type de carte, '
+                  'montant, code, identifiant de compte) soient transmises à '
+                  'l\'administrateur de la plateforme à des fins de gestion et '
+                  'de lutte contre la fraude, conformément au RGPD.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // ── Bouton Recharger ──────────────────────────────────────────
               ElevatedButton.icon(
