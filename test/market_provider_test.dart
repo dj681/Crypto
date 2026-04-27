@@ -26,6 +26,15 @@ MarketProvider _makeProvider() => MarketProvider(
       ),
     );
 
+/// Creates a provider pre-loaded with [balance] USDT for tests that require
+/// trading (buy/sell/deduct).
+MarketProvider _makeProviderWithBalance(double balance) => MarketProvider(
+      marketService: MarketService(
+        httpClient: MockClient((_) async => http.Response('[]', 200)),
+      ),
+      initialAccountBalanceUsdt: balance,
+    );
+
 void main() {
   // Reset SharedPreferences before every test so state doesn't bleed between
   // tests.
@@ -78,11 +87,11 @@ void main() {
     test('loadState falls back to default balance when no data is saved', () async {
       final provider = _makeProvider();
       await provider.loadState();
-      expect(provider.accountBalanceUsdt, 10000.0);
+      expect(provider.accountBalanceUsdt, 0.0);
     });
 
     test('saveState then loadState restores balance', () async {
-      final provider = _makeProvider();
+      final provider = _makeProviderWithBalance(10000.0);
       provider.placeOrder(
         market: 'crypto',
         ticker: _ticker(symbol: 'BTCUSD', price: 1000.0),
@@ -99,7 +108,7 @@ void main() {
     });
 
     test('saveState then loadState restores position', () async {
-      final provider = _makeProvider();
+      final provider = _makeProviderWithBalance(10000.0);
       provider.placeOrder(
         market: 'crypto',
         ticker: _ticker(symbol: 'BTCUSD', price: 500.0),
@@ -118,7 +127,7 @@ void main() {
     });
 
     test('saveState then loadState restores orders list', () async {
-      final provider = _makeProvider();
+      final provider = _makeProviderWithBalance(10000.0);
       provider.placeOrder(
         market: 'crypto',
         ticker: _ticker(symbol: 'ETHUSD', price: 2000.0),
@@ -136,7 +145,7 @@ void main() {
     });
 
     test('deductBalance persists updated balance', () async {
-      final provider = _makeProvider();
+      final provider = _makeProviderWithBalance(10000.0);
       provider.deductBalance(500.0);
       await Future<void>.delayed(Duration.zero);
 
@@ -149,7 +158,7 @@ void main() {
     test('loadState notifies listeners', () async {
       final provider = _makeProvider();
       // Put some data in prefs first.
-      final other = _makeProvider();
+      final other = _makeProviderWithBalance(10000.0);
       other.placeOrder(
         market: 'crypto',
         ticker: _ticker(symbol: 'BTCUSD', price: 100.0),
@@ -166,7 +175,7 @@ void main() {
     });
 
     test('position is removed after selling entire holding and persisted', () async {
-      final provider = _makeProvider();
+      final provider = _makeProviderWithBalance(10000.0);
       final ticker = _ticker(symbol: 'BTCUSD', price: 100.0);
       provider.placeOrder(
         market: 'crypto',
@@ -187,6 +196,30 @@ void main() {
 
       expect(restored.getPosition(market: 'crypto', symbol: 'BTCUSD'), 0.0);
       expect(restored.accountBalanceUsdt, closeTo(10000.0, 0.001));
+    });
+
+    test('resetState clears balance, positions and orders and persists', () async {
+      final provider = _makeProviderWithBalance(10000.0);
+      provider.placeOrder(
+        market: 'crypto',
+        ticker: _ticker(symbol: 'BTCUSD', price: 100.0),
+        side: TradeSide.buy,
+        quantity: 1.0,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      await provider.resetState();
+
+      // In-memory state is reset.
+      expect(provider.accountBalanceUsdt, 0.0);
+      expect(provider.orders, isEmpty);
+      expect(provider.getPosition(market: 'crypto', symbol: 'BTCUSD'), 0.0);
+
+      // Persisted state is also reset.
+      final restored = _makeProvider();
+      await restored.loadState();
+      expect(restored.accountBalanceUsdt, 0.0);
+      expect(restored.orders, isEmpty);
     });
   });
 }

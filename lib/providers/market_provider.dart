@@ -57,7 +57,7 @@ class TradeOrder {
 }
 
 class MarketProvider extends ChangeNotifier {
-  static const _defaultAccountBalanceUsdt = 10000.0;
+  static const _defaultAccountBalanceUsdt = 0.0;
   // TODO(dj681): Replace this fixed fallback with a live FX feed for EUR display.
   // Fixed fallback rate used for UI-only conversion while no FX feed exists yet
   // (set in April 2026).
@@ -209,6 +209,17 @@ class MarketProvider extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
+
+  /// Resets balance to 0 and clears all positions and orders.
+  /// Called when a new wallet is created or imported so each new account starts
+  /// with a clean slate regardless of any leftover state from a previous account.
+  Future<void> resetState() async {
+    _accountBalanceUsdt = _defaultAccountBalanceUsdt;
+    _positions.clear();
+    _orders.clear();
+    notifyListeners();
+    await saveState();
+  }
 
   /// Deducts [amountUsdt] from the account balance (e.g. for a USDT send).
   void deductBalance(double amountUsdt) {
