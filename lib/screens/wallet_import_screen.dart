@@ -20,6 +20,8 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
   final _controller = TextEditingController();
   String? _error;
   bool _isImporting = false;
+  // Shown below the spinner so the user knows something is happening.
+  String? _statusMessage;
 
   @override
   void dispose() {
@@ -37,6 +39,7 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
     setState(() {
       _error = null;
       _isImporting = true;
+      _statusMessage = 'Dérivation de la clé en cours…';
     });
 
     try {
@@ -87,11 +90,19 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
     } on ArgumentError catch (e) {
       if (!mounted) return;
       setState(() => _error = '${e.message}');
+    } on StateError catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Erreur: $e');
+      setState(() => _error = 'Erreur lors de l\'import : $e');
     } finally {
-      if (mounted) setState(() => _isImporting = false);
+      if (mounted) {
+        setState(() {
+          _isImporting = false;
+          _statusMessage = null;
+        });
+      }
     }
   }
 
@@ -140,6 +151,18 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
                     )
                   : const Text('Importer'),
             ),
+            if (_isImporting && _statusMessage != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _statusMessage!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

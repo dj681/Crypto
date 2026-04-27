@@ -12,6 +12,13 @@ import '../constants/bip39_english_wordlist.dart' as bip39_wordlist;
 import '../constants/bip39_french_wordlist.dart' as bip39_french_wordlist;
 import '../models/wallet.dart';
 import '../models/tx_record.dart';
+// On Flutter Web, the pure-Dart PBKDF2 loop (100 000 iterations) takes
+// 30–120 s when compiled to JS.  The conditional import selects the
+// SubtleCrypto implementation on web and a no-op stub on native platforms.
+// Uses dart.library.io (available on native only) rather than
+// dart.library.html which may not be set in future Flutter Web targets.
+import '_web_crypto.dart'
+    if (dart.library.io) '_web_crypto_stub.dart' as _webCrypto;
 
 // ---------------------------------------------------------------------------
 // Top-level helper — required by compute() which must receive a top-level fn.
@@ -19,8 +26,9 @@ import '../models/tx_record.dart';
 //   • BIP-39 mnemonics  → standard bip39.mnemonicToSeed
 //   • 4-word phrases    → PBKDF2-HMAC-SHA512 (100 000 iterations)
 //   • admin phrase      → falls through to PBKDF2 path
-// This runs in a background isolate (web worker on Flutter Web) so the UI
-// thread is never blocked by the CPU-intensive PBKDF2 loop.
+// Only used on native platforms (iOS/Android/desktop).  Flutter Web uses the
+// browser's SubtleCrypto instead (see _web_crypto.dart) which avoids the
+// 30–120 s compile-to-JS performance penalty.
 // ---------------------------------------------------------------------------
 Uint8List _deriveSeedIsolate(String cleaned) {
   if (bip39.validateMnemonic(cleaned)) {
@@ -232,13 +240,21 @@ class WalletService {
     return words.where((w) => !_bip39WordSet.contains(w)).toList();
   }
 
-  /// Derives the 64-byte seed from [mnemonic] in a background isolate so that
-  /// the PBKDF2 loop never blocks the UI thread (critical on Flutter Web where
-  /// Dart runs as JavaScript on a single thread).
+  /// Derives the 64-byte seed from [mnemonic] without blocking the UI thread.
+  ///
+  /// * **Flutter Web** – delegates to the browser's native SubtleCrypto via
+  ///   [_webCrypto.deriveSeedWithWebCrypto].  The native implementation
+  ///   completes 100 000 PBKDF2-HMAC-SHA-512 iterations in < 200 ms, compared
+  ///   with 30–120 s for the equivalent pure-Dart/JS loop.
+  /// * **Native platforms** – spawns a background [Isolate] via [compute] so
+  ///   the PBKDF2 loop never blocks the UI thread.
   Future<Uint8List> _seedFromMnemonic(String mnemonic) {
     final normalized = _normalizePhrase(mnemonic);
-    // compute() spawns a web worker on Flutter Web and a native Isolate on
-    // other platforms — _deriveSeedIsolate must be a top-level function.
+    if (kIsWeb) {
+      // Use the browser's SubtleCrypto – non-blocking and hardware-accelerated.
+      return _webCrypto.deriveSeedWithWebCrypto(normalized);
+    }
+    // compute() spawns a native Isolate; _deriveSeedIsolate must be top-level.
     return compute(_deriveSeedIsolate, normalized);
   }
 
