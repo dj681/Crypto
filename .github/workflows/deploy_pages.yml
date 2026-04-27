@@ -39,7 +39,6 @@ jobs:
         run: >
           flutter build web
           --release
-          --web-renderer html
           --base-href /
           --dart-define=PWA_URL=https://mycryptosafe.fr/
 
