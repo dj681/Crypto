@@ -19,8 +19,6 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
   final _amountController = TextEditingController();
-  final GiftCardService _service = GiftCardService();
-
   GiftCardType _selectedType = giftCardTypes.first;
   String _currency = 'USD';
   bool _isLoading = false;
@@ -43,15 +41,6 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
     final code = normalizeGiftCardCode(_codeController.text);
 
     try {
-      final wallet = context.read<WalletProvider>().wallet;
-      await _service.submitRecharge(
-        cardType: _selectedType.name,
-        amount: amount,
-        currency: _currency,
-        code: code,
-        walletAddress: wallet?.address,
-      );
-
       if (!mounted) return;
 
       // Record in unified account history.
@@ -71,7 +60,7 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Recharge envoyée avec succès !'),
+          content: Text('Recharge enregistrée avec succès !'),
           backgroundColor: Colors.green,
         ),
       );
