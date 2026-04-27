@@ -75,7 +75,7 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
       );
     } on ArgumentError catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.message.toString());
+      setState(() => _error = '${e.message}');
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = 'Erreur: $e');
