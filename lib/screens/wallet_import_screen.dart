@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/market_provider.dart';
 import '../providers/wallet_provider.dart';
+import 'admin_recharge_history_screen.dart';
 import 'home_screen.dart';
 import 'pin_setup_screen.dart';
 
@@ -41,6 +43,11 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
       await context.read<WalletProvider>().importWallet(phrase);
       if (!mounted) return;
 
+      // Reset market state so the imported account starts with balance = 0
+      // (avoids inheriting a previous account's balance from SharedPreferences).
+      await context.read<MarketProvider>().resetState();
+      if (!mounted) return;
+
       final setupPin = await showDialog<bool>(
             context: context,
             barrierDismissible: false,
@@ -68,9 +75,13 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
         await Navigator.pushNamed(context, PinSetupScreen.routeName);
       }
       if (!mounted) return;
+      final isAdmin =
+          context.read<WalletProvider>().wallet?.isAdmin == true;
       Navigator.pushNamedAndRemoveUntil(
         context,
-        HomeScreen.routeName,
+        isAdmin
+            ? AdminRechargeHistoryScreen.routeName
+            : HomeScreen.routeName,
         (route) => false,
       );
     } on ArgumentError catch (e) {
