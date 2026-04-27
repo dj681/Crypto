@@ -105,7 +105,7 @@ class _WalletImportScreenState extends State<WalletImportScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Saisissez votre phrase de récupération (4 mots BIP-39 en anglais, ou phrase complète de 12 à 24 mots) pour restaurer votre portefeuille.',
+              'Saisissez votre phrase de récupération (4 mots de votre choix, ou phrase BIP-39 complète de 12 à 24 mots) pour restaurer votre portefeuille.',
             ),
             const SizedBox(height: 24),
             TextFormField(

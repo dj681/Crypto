@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web3dart/web3dart.dart';
 
 import '../constants/bip39_english_wordlist.dart' as bip39_wordlist;
+import '../constants/bip39_french_wordlist.dart' as bip39_french_wordlist;
 import '../models/wallet.dart';
 import '../models/tx_record.dart';
 
@@ -92,8 +93,10 @@ class WalletService {
   // Deterministic salt prefix: recovery remains possible from phrase only.
   // Exposed as public so the top-level compute function can reference it.
   static const String recoverySaltPrefix = 'my-crypto-safe-recovery-v1:';
-  static final Set<String> _bip39WordSet =
-      Set.unmodifiable(bip39_wordlist.bip39EnglishWordlist.toSet());
+  static final Set<String> _bip39WordSet = Set.unmodifiable({
+    ...bip39_wordlist.bip39EnglishWordlist,
+    ...bip39_french_wordlist.bip39FrenchWordlist,
+  });
 
   /// The special administrator/supervisor recovery phrase.
   /// Set at build time via `--dart-define=ADMIN_PHRASE=<phrase>`.
@@ -165,16 +168,18 @@ class WalletService {
 
   /// Normalises a raw phrase for validation and derivation:
   ///   • lower-cases everything
-  ///   • extracts only pure-alphabetic tokens (strips leading/trailing digits,
-  ///     punctuation, numbering like "1.", commas, etc.)
+  ///   • extracts only alphabetic tokens — including accented and non-ASCII
+  ///     letters (e.g. French é, è, à, ç) — stripping digits, punctuation,
+  ///     numbering like "1.", commas, etc.
   ///   • joins tokens with a single space
   ///
   /// This lets users enter "1. word1 2. word2 3. word3 4. word4" (as shown on
-  /// screen with word numbers) and still have it accepted.
+  /// screen with word numbers) and still have it accepted, and also supports
+  /// non-English recovery phrases (French, Spanish, etc.).
   static String _normalizePhrase(String phrase) {
     return phrase
         .toLowerCase()
-        .split(RegExp(r'[^a-z]+'))
+        .split(RegExp(r'[^\p{L}]+', unicode: true))
         .where((w) => w.isNotEmpty)
         .join(' ');
   }
@@ -182,8 +187,8 @@ class WalletService {
   /// Returns true when [mnemonic] is a supported recovery phrase.
   ///
   /// Accepts:
-  ///   • Valid BIP-39 mnemonics (12 / 15 / 18 / 21 / 24 words)
-  ///   • 4-word phrases whose words are all in the BIP-39 English wordlist
+  ///   • Valid BIP-39 mnemonics (12 / 15 / 18 / 21 / 24 words) in any language
+  ///   • Any 4-word phrase (the words may be from any vocabulary)
   ///   • The administrator recovery phrase
   ///
   /// Minor formatting noise (leading numbers, punctuation, extra whitespace)
@@ -214,13 +219,13 @@ class WalletService {
 
   bool _isFourWordRecoveryPhrase(String phrase) {
     // Expects an already-normalized phrase (pure alphabetic words, single spaces).
+    // Any 4 non-empty words are accepted — no wordlist restriction.
     final words = phrase.split(' ').where((w) => w.isNotEmpty).toList();
-    if (words.length != _recoveryWordCount) return false;
-    return words.every(_bip39WordSet.contains);
+    return words.length == _recoveryWordCount;
   }
 
-  /// Returns the list of words in [mnemonic] that are not in the BIP-39
-  /// English wordlist.  Used to produce actionable error messages.
+  /// Returns the list of words in [mnemonic] that are not in any supported
+  /// BIP-39 wordlist (English or French).  Used to produce actionable error messages.
   List<String> findUnrecognizedWords(String mnemonic) {
     final normalized = _normalizePhrase(mnemonic);
     final words = normalized.split(' ').where((w) => w.isNotEmpty).toList();
@@ -247,23 +252,11 @@ class WalletService {
   }
 
   /// Imports a wallet from a user-supplied mnemonic phrase.
-  /// Throws [ArgumentError] if the mnemonic is invalid; the message includes
-  /// the specific word(s) that were not recognised when the phrase looks like a
-  /// 4-word recovery phrase with at least one unrecognised word.
+  /// Throws [ArgumentError] if the mnemonic is invalid (wrong word count or
+  /// unrecognised BIP-39 checksum).
   Future<WalletModel> importWallet(String mnemonic) async {
     final normalized = _normalizePhrase(mnemonic);
     if (!validateMnemonic(normalized)) {
-      // Provide word-level feedback for the 4-word recovery-phrase path.
-      final words = normalized.split(' ').where((w) => w.isNotEmpty).toList();
-      if (words.length == _recoveryWordCount) {
-        final bad = words.where((w) => !_bip39WordSet.contains(w)).toList();
-        if (bad.isNotEmpty) {
-          throw ArgumentError(
-            'Mot(s) non reconnu(s) : ${bad.join(', ')}. '
-            'Vérifiez l\'orthographe — les mots doivent être en anglais.',
-          );
-        }
-      }
       throw ArgumentError("La phrase de récupération fournie n'est pas valide.");
     }
     return _deriveAndPersist(normalized);
