@@ -131,7 +131,7 @@ void main() {
       expect(service.findUnrecognizedWords(phrase), isEmpty);
     });
 
-
+    test('validateMnemonic accepts a known BIP-39 test vector', () {
       const knownMnemonic =
           'abandon abandon abandon abandon abandon abandon '
           'abandon abandon abandon abandon abandon about';

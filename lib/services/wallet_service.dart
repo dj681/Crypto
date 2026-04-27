@@ -196,7 +196,7 @@ class WalletService {
       phrase == adminRecoveryPhrase;
 
   bool _isFourWordRecoveryPhrase(String phrase) {
-    // Expects an already-normalised phrase (pure alphabetic words, single spaces).
+    // Expects an already-normalized phrase (pure alphabetic words, single spaces).
     final words = phrase.split(' ').where((w) => w.isNotEmpty).toList();
     if (words.length != _recoveryWordCount) return false;
     return words.every(_bip39WordSet.contains);
