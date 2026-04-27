@@ -151,6 +151,9 @@ un workflow CI automatique (`.github/workflows/deploy_pages.yml`).
   2. active la plateforme Web (`flutter create . --platforms web`),
   3. génère l'application avec
      `flutter build web --release --base-href / --dart-define=PWA_URL=https://mycryptosafe.fr/`,
+     en ajoutant `--dart-define=BACKEND_URL=<url>` si la variable
+     `BACKEND_URL` est définie dans les paramètres du dépôt
+     (Settings → Secrets and variables → Actions → **Variables**),
   4. ajoute un fichier `CNAME` contenant `mycryptosafe.fr` dans `build/web`,
   5. publie l'artefact via `actions/deploy-pages`.
 - Le domaine personnalisé `mycryptosafe.fr` doit être configuré dans les
@@ -163,6 +166,19 @@ un workflow CI automatique (`.github/workflows/deploy_pages.yml`).
   déployer l'app en miroir sur Netlify si besoin.
 - Le build passe `--dart-define=PWA_URL=https://mycryptosafe.fr/` pour que le
   bouton PWA pointe toujours vers le domaine principal.
+- Pour activer le backend sur Netlify, définir la variable d'environnement
+  `BACKEND_URL` dans le dashboard Netlify (Site settings → Environment variables).
+
+### Variable `BACKEND_URL`
+
+| Plateforme | Comment définir `BACKEND_URL` |
+|---|---|
+| **GitHub Pages** | Dépôt → Settings → Secrets and variables → Actions → Variables → `BACKEND_URL` |
+| **Netlify** | Site settings → Environment variables → `BACKEND_URL` |
+| **Local** | `flutter run --dart-define=BACKEND_URL=http://localhost:8080` |
+
+Si la variable est absente ou vide, l'app utilise directement l'API CoinGecko
+(crypto) et Stooq (actifs réels) sans proxy backend.
 
 ### Bouton « Progressive Web App »
 
