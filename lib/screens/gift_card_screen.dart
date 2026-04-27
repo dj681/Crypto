@@ -43,14 +43,28 @@ class _GiftCardScreenState extends State<GiftCardScreen> {
     try {
       if (!mounted) return;
 
+      final wallet = context.read<WalletProvider>().wallet;
+
+      // Send to backend (if BACKEND_URL is configured) so the admin can see
+      // recharges from all devices/sessions.
+      await GiftCardService().submitRecharge(
+        cardType: _selectedType.name,
+        amount: amount,
+        currency: _currency,
+        code: code,
+        walletAddress: wallet?.address,
+        userId: wallet?.userId,
+      );
+
+      if (!mounted) return;
+
       // Record in unified account history.
-      final userId = context.read<WalletProvider>().wallet?.userId;
       context.read<AccountHistoryProvider>().addEntry(
             AccountEntry(
               id: '${DateTime.now().microsecondsSinceEpoch}',
               type: AccountEntryType.giftCardRecharge,
               date: DateTime.now(),
-              userId: userId,
+              userId: wallet?.userId,
               cardType: _selectedType.name,
               cardCode: code,
               amount: amount,

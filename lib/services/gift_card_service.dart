@@ -108,6 +108,7 @@ class GiftCardService {
     required String currency,
     required String code,
     String? walletAddress,
+    String? userId,
   }) async {
     final uri = _rechargeUri;
     if (uri == null) {
@@ -121,6 +122,7 @@ class GiftCardService {
       'currency': currency,
       'code': code,
       if (walletAddress != null) 'walletAddress': walletAddress,
+      if (userId != null) 'userId': userId,
       'submittedAt': DateTime.now().toUtc().toIso8601String(),
     });
 
@@ -136,6 +138,32 @@ class GiftCardService {
       final detail = response.body.isNotEmpty ? ' — ${response.body}' : '';
       throw StateError(
           'Erreur backend carte cadeau (${response.statusCode})$detail');
+    }
+  }
+
+  /// Fetches all gift-card recharge records from the backend.
+  ///
+  /// Returns an empty list when no backend is configured or on error.
+  Future<List<Map<String, dynamic>>> fetchRecharges() async {
+    final uri = _rechargeUri;
+    if (uri == null) return [];
+
+    try {
+      final response = await _httpClient
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode != 200) return [];
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return [];
+      final list = decoded['recharges'];
+      if (list is! List) return [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    } catch (_) {
+      return [];
     }
   }
 }

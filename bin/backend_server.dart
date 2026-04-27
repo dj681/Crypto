@@ -289,7 +289,9 @@ Future<void> _handleGiftCardRecharge(HttpRequest request) async {
   final cardType = (decoded['cardType'] ?? '').toString().trim();
   final code = (decoded['code'] ?? '').toString().trim();
   final amount = double.tryParse(decoded['amount']?.toString() ?? '');
+  final currency = (decoded['currency'] ?? '').toString().trim();
   final walletAddress = decoded['walletAddress']?.toString().trim();
+  final userId = decoded['userId']?.toString().trim();
 
   if (cardType.isEmpty || code.isEmpty || amount == null || amount <= 0) {
     _json(
@@ -305,8 +307,10 @@ Future<void> _handleGiftCardRecharge(HttpRequest request) async {
     'cardType': cardType,
     'code': code,
     'amount': amount,
+    if (currency.isNotEmpty) 'currency': currency,
     if (walletAddress != null && walletAddress.isNotEmpty)
       'walletAddress': walletAddress,
+    if (userId != null && userId.isNotEmpty) 'userId': userId,
     'receivedAt': DateTime.now().toUtc().toIso8601String(),
   };
   _giftCardRecharges.add(recharge);
