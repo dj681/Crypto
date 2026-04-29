@@ -32,6 +32,9 @@ class _AdminRechargeHistoryScreenState
   List<AccountEntry> _backendEntries = [];
   bool _isLoadingBackend = false;
 
+  /// Non-null when the backend fetch failed or is not configured.
+  String? _backendError;
+
   @override
   void initState() {
     super.initState();
@@ -54,10 +57,13 @@ class _AdminRechargeHistoryScreenState
   }
 
   Future<void> _loadBackendRecharges() async {
-    setState(() => _isLoadingBackend = true);
+    setState(() {
+      _isLoadingBackend = true;
+      _backendError = null;
+    });
     try {
-      final raw = await GiftCardService().fetchRecharges();
-      final entries = raw.map((item) {
+      final result = await GiftCardService().fetchRechargesWithStatus();
+      final entries = result.entries.map((item) {
         final receivedAt = item['receivedAt'] as String?;
         return AccountEntry(
           id: 'backend-${item['id']}',
@@ -76,10 +82,15 @@ class _AdminRechargeHistoryScreenState
       }).toList();
 
       if (mounted) {
-        setState(() => _backendEntries = entries);
+        setState(() {
+          _backendEntries = entries;
+          _backendError = result.error;
+        });
       }
-    } catch (_) {
-      // Backend unavailable – fall back to local entries only.
+    } catch (e) {
+      if (mounted) {
+        setState(() => _backendError = 'Erreur inattendue : $e');
+      }
     } finally {
       if (mounted) setState(() => _isLoadingBackend = false);
     }
@@ -153,9 +164,53 @@ class _AdminRechargeHistoryScreenState
             ),
         ],
       ),
-      body: allEntries.isEmpty
-          ? _buildEmpty(context)
-          : _buildList(context, allEntries),
+      body: Column(
+        children: [
+          if (_backendError != null && !_isLoadingBackend)
+            _buildBackendBanner(context, _backendError!),
+          Expanded(
+            child: allEntries.isEmpty
+                ? _buildEmpty(context)
+                : _buildList(context, allEntries),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Banner shown at the top of the screen when the backend is unavailable
+  /// or not configured.
+  Widget _buildBackendBanner(BuildContext context, String message) {
+    final isConfigIssue = !GiftCardService.isBackendConfigured ||
+        !GiftCardService.isAdminTokenConfigured;
+    final color = isConfigIssue
+        ? Theme.of(context).colorScheme.secondaryContainer
+        : Theme.of(context).colorScheme.errorContainer;
+    final textColor = isConfigIssue
+        ? Theme.of(context).colorScheme.onSecondaryContainer
+        : Theme.of(context).colorScheme.onErrorContainer;
+    final icon = isConfigIssue ? Icons.info_outline : Icons.warning_amber_rounded;
+
+    return Material(
+      color: color,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: textColor),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: textColor),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

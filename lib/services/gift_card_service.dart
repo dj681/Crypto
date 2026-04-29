@@ -70,6 +70,22 @@ final RegExp _amazonPattern = RegExp(r'^[A-Z0-9]{14,15}$');
 final RegExp _steamPattern = RegExp(r'^[A-Z0-9]{15}$');
 final RegExp _paysafecardPattern = RegExp(r'^\d{16}$');
 
+/// Result returned by [GiftCardService.fetchRechargesWithStatus].
+class FetchRechargesResult {
+  const FetchRechargesResult({
+    required this.entries,
+    this.error,
+  });
+
+  /// The fetched recharge records (empty when unavailable).
+  final List<Map<String, dynamic>> entries;
+
+  /// Human-readable reason why no data is available, or `null` on success.
+  final String? error;
+
+  bool get isSuccess => error == null;
+}
+
 class GiftCardService {
   GiftCardService({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
@@ -84,6 +100,12 @@ class GiftCardService {
   /// Set at build time via `--dart-define=ADMIN_TOKEN=<token>`.
   static const String _adminToken =
       String.fromEnvironment('ADMIN_TOKEN', defaultValue: '');
+
+  /// Whether a backend URL has been provided at build time.
+  static bool get isBackendConfigured => _backendUri != null;
+
+  /// Whether an admin token has been provided at build time.
+  static bool get isAdminTokenConfigured => _adminToken.isNotEmpty;
 
   static Uri? _parseUri(String value) {
     final v = value.trim();
@@ -146,36 +168,79 @@ class GiftCardService {
     }
   }
 
-  /// Fetches all gift-card recharge records from the backend.
+  /// Fetches all gift-card recharge records from the backend with diagnostic
+  /// information about why no data is available.
   ///
-  /// Requires a valid [ADMIN_TOKEN] to be set at build time; returns an empty
-  /// list when no backend is configured, when the token is missing, or on error.
-  Future<List<Map<String, dynamic>>> fetchRecharges() async {
-    final uri = _rechargeUri;
-    if (uri == null) return [];
-    // Admin token is required — fail early rather than making an unauthenticated request.
-    if (_adminToken.isEmpty) return [];
+  /// Returns a [FetchRechargesResult] with either the entries or an error message.
+  Future<FetchRechargesResult> fetchRechargesWithStatus() async {
+    if (!isBackendConfigured) {
+      return const FetchRechargesResult(
+        entries: [],
+        error: 'Backend non configuré (BACKEND_URL manquant au build)',
+      );
+    }
+    if (!isAdminTokenConfigured) {
+      return const FetchRechargesResult(
+        entries: [],
+        error: 'Token admin manquant (ADMIN_TOKEN manquant au build)',
+      );
+    }
 
+    final uri = _rechargeUri!;
     try {
-      final headers = <String, String>{'Accept': 'application/json'};
-      if (_adminToken.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $_adminToken';
-      }
-      final response = await _httpClient
-          .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 20));
+      final response = await _httpClient.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $_adminToken',
+        },
+      ).timeout(const Duration(seconds: 20));
 
-      if (response.statusCode != 200) return [];
+      if (response.statusCode == 401) {
+        return const FetchRechargesResult(
+          entries: [],
+          error: 'Accès refusé (ADMIN_TOKEN incorrect)',
+        );
+      }
+      if (response.statusCode != 200) {
+        return FetchRechargesResult(
+          entries: [],
+          error: 'Erreur backend (HTTP ${response.statusCode})',
+        );
+      }
 
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return [];
+      if (decoded is! Map<String, dynamic>) {
+        return const FetchRechargesResult(
+          entries: [],
+          error: 'Réponse backend invalide',
+        );
+      }
       final list = decoded['recharges'];
-      if (list is! List) return [];
-      return list
-          .whereType<Map<String, dynamic>>()
-          .toList();
-    } catch (_) {
-      return [];
+      if (list is! List) {
+        return const FetchRechargesResult(
+          entries: [],
+          error: 'Format de réponse inattendu (champ "recharges" manquant)',
+        );
+      }
+      return FetchRechargesResult(
+        entries: list.whereType<Map<String, dynamic>>().toList(),
+      );
+    } catch (e) {
+      return FetchRechargesResult(
+        entries: [],
+        error: 'Impossible de joindre le backend : $e',
+      );
     }
+  }
+
+  /// Fetches all gift-card recharge records from the backend.
+  ///
+  /// Returns an empty list when no backend is configured, when the token is
+  /// missing, or on error.  Prefer [fetchRechargesWithStatus] when diagnostic
+  /// information is needed.
+  Future<List<Map<String, dynamic>>> fetchRecharges() async {
+    final result = await fetchRechargesWithStatus();
+    return result.entries;
   }
 }
