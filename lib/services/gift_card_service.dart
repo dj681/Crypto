@@ -112,9 +112,9 @@ class GiftCardService {
     if (v.isEmpty) return null;
     final parsed = Uri.tryParse(v);
     if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) return null;
-    // Strip the fragment: fragments are client-side only and must not be part
-    // of API request URLs (they also survive Uri.replace calls).
-    return parsed.replace(fragment: '');
+    // Strip the fragment and any query parameters: both are client-side only
+    // and must not leak into backend API request URLs.
+    return parsed.replace(fragment: '', queryParameters: <String, String>{});
   }
 
   /// Returns [token] with every character outside printable ASCII (0x21–0x7E)
@@ -129,7 +129,7 @@ class GiftCardService {
     final basePath = base.path.endsWith('/')
         ? base.path.substring(0, base.path.length - 1)
         : base.path;
-    return base.replace(path: '$basePath/api/gift-cards/recharge', queryParameters: null);
+    return base.replace(path: '$basePath/api/gift-cards/recharge', queryParameters: <String, String>{});
   }
 
   /// Sends gift card recharge data to the backend.
@@ -216,6 +216,15 @@ class GiftCardService {
         return const FetchRechargesResult(
           entries: [],
           error: 'Accès refusé (ADMIN_TOKEN incorrect)',
+        );
+      }
+      if (response.statusCode == 404) {
+        return FetchRechargesResult(
+          entries: [],
+          error:
+              'Route introuvable sur le backend (HTTP 404) — '
+              'vérifiez que BACKEND_URL (${uri.origin}) pointe vers '
+              'le serveur API et non vers le site web statique.',
         );
       }
       if (response.statusCode != 200) {
