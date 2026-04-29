@@ -381,11 +381,40 @@ class WalletService {
     final isAdminStr = await _storage.read(key: _Keys.isAdmin);
     // The isAdmin flag is always persisted at creation/import time (since this
     // feature was introduced). If the key is absent the account is not admin.
-    final isAdminAccount = isAdminStr == 'true';
+    var isAdminAccount = isAdminStr == 'true';
+
+    // Migration: if the flag is not yet set to true but an ADMIN_PHRASE is
+    // configured at build time, re-check the stored mnemonic so that accounts
+    // imported before the admin feature (or before ADMIN_PHRASE was defined)
+    // are automatically promoted without requiring a re-import.
+    if (!isAdminAccount && adminRecoveryPhrase.isNotEmpty) {
+      final storedMnemonic = await _storage.read(key: _Keys.mnemonic);
+      if (storedMnemonic != null &&
+          storedMnemonic.isNotEmpty &&
+          _isAdminPhrase(_normalizePhrase(storedMnemonic))) {
+        isAdminAccount = true;
+        // Persist the corrected flag and, if an ADMIN_PIN was provided,
+        // also ensure the pin hash and hasPinEnabled are set.
+        final adminWrites = <Future<void>>[
+          _storage.write(key: _Keys.isAdmin, value: 'true'),
+          _storage.write(key: _Keys.userId, value: _adminUserId),
+        ];
+        if (_adminPinHash.isNotEmpty) {
+          adminWrites.addAll([
+            _storage.write(key: _Keys.pinHash, value: _adminPinHash),
+            _storage.write(key: _Keys.hasPinEnabled, value: 'true'),
+          ]);
+        }
+        await Future.wait(adminWrites);
+        // Update local variables to reflect the corrected state.
+        userId = _adminUserId;
+      }
+    }
 
     return WalletModel(
       address: address,
-      hasPinEnabled: hasPinStr == 'true',
+      hasPinEnabled:
+          (isAdminAccount && _adminPinHash.isNotEmpty) || hasPinStr == 'true',
       hasBiometricsEnabled: hasBioStr == 'true',
       userId: userId,
       isAdmin: isAdminAccount,
