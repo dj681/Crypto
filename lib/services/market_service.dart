@@ -80,6 +80,11 @@ class MarketService {
           .timeout(const Duration(seconds: 20))
           .catchError(
               (Object e) => throw StateError('Erreur réseau marché crypto: $e'));
+      if (response.statusCode == 404) {
+        // Backend URL likely points to the static site instead of the API
+        // server. Fall back to CoinGecko to keep the market view functional.
+        return fetchCoinGeckoMarket(limit: limit);
+      }
       if (response.statusCode != 200) {
         throw StateError('Erreur backend marché crypto (${response.statusCode})');
       }
@@ -144,6 +149,15 @@ class MarketService {
           .timeout(const Duration(seconds: 20))
           .catchError(
               (Object e) => throw StateError('Erreur réseau actifs réels: $e'));
+      if (response.statusCode == 404) {
+        // Backend URL likely points to the static site instead of the API
+        // server. Fall back to the built-in default data.
+        final defaults = _defaultRealAssets;
+        if (limit != null && limit > 0 && defaults.length > limit) {
+          return defaults.take(limit).toList(growable: false);
+        }
+        return defaults;
+      }
       if (response.statusCode != 200) {
         throw StateError('Erreur backend actifs réels (${response.statusCode})');
       }
