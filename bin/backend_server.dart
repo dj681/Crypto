@@ -13,6 +13,11 @@ final Map<String, ({String base, String quote})> _symbolCache = {};
 final Map<String, _MarketOverride> _manualOverrides = {};
 final List<Map<String, dynamic>> _giftCardRecharges = [];
 final List<Map<String, dynamic>> _deposits = [];
+
+// Monotonic counters for entry IDs — incremented on every insert so IDs
+// remain unique even after entries have been deleted.
+int _nextRechargeId = 1;
+int _nextDepositId = 1;
 final List<Map<String, dynamic>> _adminAuditLog = [];
 DateTime? _symbolCacheLoadedAt;
 
@@ -26,6 +31,7 @@ final String _dataDir =
         : '.';
 
 File get _rechargesFile => File('$_dataDir/recharges.json');
+File get _depositsFile => File('$_dataDir/deposits.json');
 
 /// Loads persisted recharges from disk.  Called once at startup.
 Future<void> _loadRechargesFromDisk() async {
@@ -57,6 +63,56 @@ Future<void> _saveRechargesToDisk() async {
   } catch (e) {
     stderr.writeln('[persistence] Impossible de sauvegarder recharges.json : $e');
   }
+}
+
+/// Loads persisted deposits from disk.  Called once at startup.
+Future<void> _loadDepositsFromDisk() async {
+  try {
+    final file = _depositsFile;
+    if (!await file.exists()) return;
+    final content = await file.readAsString();
+    final list = jsonDecode(content);
+    if (list is List) {
+      _deposits
+        ..clear()
+        ..addAll(list.whereType<Map<String, dynamic>>());
+      stdout.writeln(
+          '[persistence] ${_deposits.length} dépôt(s) chargé(s) depuis ${file.path}');
+    }
+  } catch (e) {
+    stderr.writeln('[persistence] Impossible de charger deposits.json : $e');
+  }
+}
+
+/// Persists the current deposit list to disk.
+Future<void> _saveDepositsToDisk() async {
+  try {
+    final dir = Directory(_dataDir);
+    if (!await dir.exists()) await dir.create(recursive: true);
+    final tmp = File('$_dataDir/deposits.json.tmp');
+    await tmp.writeAsString(jsonEncode(_deposits));
+    await tmp.rename(_depositsFile.path);
+  } catch (e) {
+    stderr.writeln('[persistence] Impossible de sauvegarder deposits.json : $e');
+  }
+}
+
+/// Initialises [_nextRechargeId] from the highest ID present in persisted data.
+void _initRechargeIdCounter() {
+  if (_giftCardRecharges.isEmpty) return;
+  _nextRechargeId = _giftCardRecharges
+          .map((r) => (r['id'] as num?)?.toInt() ?? 0)
+          .fold(0, (max, id) => id > max ? id : max) +
+      1;
+}
+
+/// Initialises [_nextDepositId] from the highest ID present in persisted data.
+void _initDepositIdCounter() {
+  if (_deposits.isEmpty) return;
+  _nextDepositId = _deposits
+          .map((d) => (d['id'] as num?)?.toInt() ?? 0)
+          .fold(0, (max, id) => id > max ? id : max) +
+      1;
 }
 
 /// Bearer token required for admin-only endpoints.
@@ -143,6 +199,9 @@ Future<void> main() async {
 
   // Load persisted data before accepting requests.
   await _loadRechargesFromDisk();
+  _initRechargeIdCounter();
+  await _loadDepositsFromDisk();
+  _initDepositIdCounter();
 
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   final httpClient = http.Client();
@@ -159,8 +218,13 @@ Future<void> main() async {
       continue;
     }
 
+    // Normalise the request path (strip trailing slash) and split into
+    // segments so that routes are robust to minor URL formatting differences.
+    final path = _normalizePath(request.uri.path);
+    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+
     try {
-      if (request.uri.path == '/health') {
+      if (path == '/health') {
         if (request.method != 'GET') {
           _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
           continue;
@@ -173,7 +237,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/binance/ticker24h') {
+      if (path == '/api/binance/ticker24h') {
         if (request.method != 'GET') {
           _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
           continue;
@@ -183,7 +247,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/binance/exchangeInfo') {
+      if (path == '/api/binance/exchangeInfo') {
         if (request.method != 'GET') {
           _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
           continue;
@@ -193,7 +257,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/market/crypto') {
+      if (path == '/api/market/crypto') {
         if (request.method != 'GET') {
           _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
           continue;
@@ -202,7 +266,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/market/real-assets') {
+      if (path == '/api/market/real-assets') {
         if (request.method != 'GET') {
           _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
           continue;
@@ -211,7 +275,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/market/overrides') {
+      if (path == '/api/market/overrides') {
         if (request.method == 'GET') {
           _json(request.response, HttpStatus.ok, _buildOverridesPayload());
           continue;
@@ -224,13 +288,13 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.pathSegments.length == 5 &&
-          request.uri.pathSegments[0] == 'api' &&
-          request.uri.pathSegments[1] == 'market' &&
-          request.uri.pathSegments[2] == 'overrides' &&
+      if (segments.length == 5 &&
+          segments[0] == 'api' &&
+          segments[1] == 'market' &&
+          segments[2] == 'overrides' &&
           request.method == 'DELETE') {
-        final market = request.uri.pathSegments[3].trim().toLowerCase();
-        final symbol = request.uri.pathSegments[4].trim().toUpperCase();
+        final market = segments[3].trim().toLowerCase();
+        final symbol = segments[4].trim().toUpperCase();
         final deleted = _manualOverrides.remove('$market:$symbol') != null;
         _json(
           request.response,
@@ -244,15 +308,15 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.pathSegments.length == 5 &&
-          request.uri.pathSegments[0] == 'api' &&
-          request.uri.pathSegments[1] == 'market' &&
-          request.uri.pathSegments[2] == 'overrides') {
+      if (segments.length == 5 &&
+          segments[0] == 'api' &&
+          segments[1] == 'market' &&
+          segments[2] == 'overrides') {
         _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
         continue;
       }
 
-      if (request.uri.path == '/api/gift-cards/recharge') {
+      if (path == '/api/gift-cards/recharge') {
         if (request.method == 'POST') {
           await _handleGiftCardRecharge(request);
           continue;
@@ -273,16 +337,16 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.pathSegments.length == 4 &&
-          request.uri.pathSegments[0] == 'api' &&
-          request.uri.pathSegments[1] == 'gift-cards' &&
-          request.uri.pathSegments[2] == 'recharge' &&
+      if (segments.length == 4 &&
+          segments[0] == 'api' &&
+          segments[1] == 'gift-cards' &&
+          segments[2] == 'recharge' &&
           request.method == 'DELETE') {
         if (!_isAdminRequest(request)) {
           _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
           continue;
         }
-        final idStr = request.uri.pathSegments[3];
+        final idStr = segments[3];
         final id = int.tryParse(idStr);
         if (id == null) {
           _json(request.response, HttpStatus.badRequest, {'error': 'ID invalide'});
@@ -300,7 +364,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/admin/audit-log') {
+      if (path == '/api/admin/audit-log') {
         if (request.method != 'GET') {
           _json(request.response, HttpStatus.methodNotAllowed, {'error': 'Method not allowed'});
           continue;
@@ -317,7 +381,7 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.path == '/api/deposit') {
+      if (path == '/api/deposit') {
         if (request.method == 'POST') {
           await _handleDeposit(request);
           continue;
@@ -338,15 +402,15 @@ Future<void> main() async {
         continue;
       }
 
-      if (request.uri.pathSegments.length == 3 &&
-          request.uri.pathSegments[0] == 'api' &&
-          request.uri.pathSegments[1] == 'deposit' &&
+      if (segments.length == 3 &&
+          segments[0] == 'api' &&
+          segments[1] == 'deposit' &&
           request.method == 'DELETE') {
         if (!_isAdminRequest(request)) {
           _json(request.response, HttpStatus.unauthorized, {'error': 'Unauthorized'});
           continue;
         }
-        final idStr = request.uri.pathSegments[2];
+        final idStr = segments[2];
         final id = int.tryParse(idStr);
         if (id == null) {
           _json(request.response, HttpStatus.badRequest, {'error': 'ID invalide'});
@@ -359,6 +423,7 @@ Future<void> main() async {
         }
         _deposits.removeAt(idx);
         _recordAuditEvent(request, 'delete_deposit:$id');
+        unawaited(_saveDepositsToDisk());
         _json(request.response, HttpStatus.ok, {'ok': true, 'deleted': id});
         continue;
       }
@@ -381,6 +446,16 @@ Future<void> main() async {
 Uri _withQuery(Uri uri, Map<String, String> query) {
   if (query.isEmpty) return uri;
   return uri.replace(queryParameters: query);
+}
+
+/// Strips a single trailing slash from [path] so that routes are matched
+/// consistently regardless of whether the client appended one.
+/// The root path "/" is returned unchanged.
+String _normalizePath(String path) {
+  if (path.length > 1 && path.endsWith('/')) {
+    return path.substring(0, path.length - 1);
+  }
+  return path;
 }
 
 Future<void> _proxyGet(http.Client client, Uri uri, HttpResponse response) async {
@@ -482,7 +557,7 @@ Future<void> _handleGiftCardRecharge(HttpRequest request) async {
   }
 
   final recharge = {
-    'id': _giftCardRecharges.length + 1,
+    'id': _nextRechargeId++,
     'cardType': cardType,
     'code': code,
     'amount': amount,
@@ -534,7 +609,7 @@ Future<void> _handleDeposit(HttpRequest request) async {
   }
 
   final deposit = {
-    'id': _deposits.length + 1,
+    'id': _nextDepositId++,
     'txHash': txHash,
     'amount': amount,
     'currency': currency,
@@ -545,6 +620,7 @@ Future<void> _handleDeposit(HttpRequest request) async {
     'receivedAt': DateTime.now().toUtc().toIso8601String(),
   };
   _deposits.add(deposit);
+  unawaited(_saveDepositsToDisk());
 
   _json(request.response, HttpStatus.ok, {'ok': true, 'deposit': deposit});
 }
