@@ -112,8 +112,16 @@ class GiftCardService {
     if (v.isEmpty) return null;
     final parsed = Uri.tryParse(v);
     if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) return null;
-    return parsed;
+    // Strip the fragment: fragments are client-side only and must not be part
+    // of API request URLs (they also survive Uri.replace calls).
+    return parsed.replace(fragment: '');
   }
+
+  /// Returns [token] with every character outside printable ASCII (0x21–0x7E)
+  /// removed.  HTTP headers must not contain non-ISO-8859-1 code points; the
+  /// browser's fetch API rejects the request otherwise.
+  static String _sanitizeHeaderToken(String token) =>
+      token.replaceAll(RegExp(r'[^\x21-\x7E]'), '');
 
   Uri? get _rechargeUri {
     final base = _backendUri;
@@ -187,12 +195,20 @@ class GiftCardService {
     }
 
     final uri = _rechargeUri!;
+    final safeToken = _sanitizeHeaderToken(_adminToken);
+    if (safeToken.isEmpty) {
+      return const FetchRechargesResult(
+        entries: [],
+        error:
+            'Token admin invalide (caractères non-ASCII dans ADMIN_TOKEN)',
+      );
+    }
     try {
       final response = await _httpClient.get(
         uri,
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $_adminToken',
+          'Authorization': 'Bearer $safeToken',
         },
       ).timeout(const Duration(seconds: 20));
 
