@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,6 +15,49 @@ final List<Map<String, dynamic>> _giftCardRecharges = [];
 final List<Map<String, dynamic>> _deposits = [];
 final List<Map<String, dynamic>> _adminAuditLog = [];
 DateTime? _symbolCacheLoadedAt;
+
+// ── Persistence ─────────────────────────────────────────────────────────────
+
+/// Directory where JSON persistence files are stored.
+/// Override with the `DATA_DIR` environment variable (e.g. `/var/data`).
+final String _dataDir =
+    Platform.environment['DATA_DIR']?.trim().isNotEmpty == true
+        ? Platform.environment['DATA_DIR']!.trim()
+        : '.';
+
+File get _rechargesFile => File('$_dataDir/recharges.json');
+
+/// Loads persisted recharges from disk.  Called once at startup.
+Future<void> _loadRechargesFromDisk() async {
+  try {
+    final file = _rechargesFile;
+    if (!await file.exists()) return;
+    final content = await file.readAsString();
+    final list = jsonDecode(content);
+    if (list is List) {
+      _giftCardRecharges
+        ..clear()
+        ..addAll(list.whereType<Map<String, dynamic>>());
+      stdout.writeln(
+          '[persistence] ${_giftCardRecharges.length} recharge(s) chargée(s) depuis ${file.path}');
+    }
+  } catch (e) {
+    stderr.writeln('[persistence] Impossible de charger recharges.json : $e');
+  }
+}
+
+/// Persists the current recharge list to disk.
+Future<void> _saveRechargesToDisk() async {
+  try {
+    final dir = Directory(_dataDir);
+    if (!await dir.exists()) await dir.create(recursive: true);
+    final tmp = File('$_dataDir/recharges.json.tmp');
+    await tmp.writeAsString(jsonEncode(_giftCardRecharges));
+    await tmp.rename(_rechargesFile.path);
+  } catch (e) {
+    stderr.writeln('[persistence] Impossible de sauvegarder recharges.json : $e');
+  }
+}
 
 /// Bearer token required for admin-only endpoints.
 /// Set via the `ADMIN_TOKEN` environment variable.  When not set (empty) all
@@ -96,6 +140,9 @@ const List<_RealAssetSource> _realAssetSources = [
 Future<void> main() async {
   final portEnv = Platform.environment['PORT']?.trim();
   final port = int.tryParse(portEnv ?? '') ?? 8080;
+
+  // Load persisted data before accepting requests.
+  await _loadRechargesFromDisk();
 
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   final httpClient = http.Client();
@@ -248,6 +295,7 @@ Future<void> main() async {
         }
         _giftCardRecharges.removeAt(idx);
         _recordAuditEvent(request, 'delete_recharge:$id');
+        unawaited(_saveRechargesToDisk());
         _json(request.response, HttpStatus.ok, {'ok': true, 'deleted': id});
         continue;
       }
@@ -445,6 +493,7 @@ Future<void> _handleGiftCardRecharge(HttpRequest request) async {
     'receivedAt': DateTime.now().toUtc().toIso8601String(),
   };
   _giftCardRecharges.add(recharge);
+  unawaited(_saveRechargesToDisk());
 
   _json(request.response, HttpStatus.ok, {'ok': true, 'recharge': recharge});
 }
