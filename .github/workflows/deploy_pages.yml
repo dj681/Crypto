@@ -40,6 +40,7 @@ jobs:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
           ADMIN_PHRASE: ${{ secrets.ADMIN_PHRASE }}
           ADMIN_PIN: ${{ secrets.ADMIN_PIN }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           flutter build web \
             --release \
@@ -47,6 +48,7 @@ jobs:
             --dart-define=PWA_URL=https://mycryptosafe.fr/ \
             ${ADMIN_PHRASE:+--dart-define=ADMIN_PHRASE="$ADMIN_PHRASE"} \
             ${ADMIN_PIN:+--dart-define=ADMIN_PIN="$ADMIN_PIN"} \
+            ${ADMIN_TOKEN:+--dart-define=ADMIN_TOKEN="$ADMIN_TOKEN"} \
             ${BACKEND_URL:+--dart-define=BACKEND_URL=$BACKEND_URL}
 
       - name: Write CNAME
