@@ -169,6 +169,12 @@ class GiftCardService {
         )
         .timeout(const Duration(seconds: 20));
 
+    if (response.statusCode == 404) {
+      throw StateError(
+          'Route introuvable sur le backend (HTTP 404) — '
+          'vérifiez que BACKEND_URL (${uri.origin}) pointe vers '
+          'le serveur API et non vers le site web statique.');
+    }
     if (response.statusCode != 200 && response.statusCode != 201) {
       final detail = response.body.isNotEmpty ? ' — ${response.body}' : '';
       throw StateError(
