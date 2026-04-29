@@ -38,11 +38,15 @@ jobs:
       - name: Build Flutter web
         env:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
+          ADMIN_PHRASE: ${{ secrets.ADMIN_PHRASE }}
+          ADMIN_PIN: ${{ secrets.ADMIN_PIN }}
         run: |
           flutter build web \
             --release \
             --base-href / \
             --dart-define=PWA_URL=https://mycryptosafe.fr/ \
+            ${ADMIN_PHRASE:+--dart-define=ADMIN_PHRASE="$ADMIN_PHRASE"} \
+            ${ADMIN_PIN:+--dart-define=ADMIN_PIN="$ADMIN_PIN"} \
             ${BACKEND_URL:+--dart-define=BACKEND_URL=$BACKEND_URL}
 
       - name: Write CNAME
