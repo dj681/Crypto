@@ -399,7 +399,7 @@ Future<void> _proxyGet(http.Client client, Uri uri, HttpResponse response) async
 void _setCorsHeaders(HttpResponse response) {
   response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
   response.headers.set(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set(HttpHeaders.accessControlAllowHeadersHeader, 'Content-Type');
+  response.headers.set(HttpHeaders.accessControlAllowHeadersHeader, 'Content-Type, Authorization');
 }
 
 void _json(HttpResponse response, int statusCode, Object body) {
