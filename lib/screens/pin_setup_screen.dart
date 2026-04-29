@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/security_provider.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/pin_pad.dart';
+import 'admin_recharge_history_screen.dart';
 
 /// Allows the user to set, change, or remove their PIN.
 class PinSetupScreen extends StatefulWidget {
@@ -63,7 +64,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
       case _PinStep.confirmNew:
         if (pin == _firstPin) {
           await context.read<SecurityProvider>().setupPin(pin);
-          await context.read<WalletProvider>().setPinEnabled(enabled: true);
+          final walletProvider = context.read<WalletProvider>();
+          await walletProvider.setPinEnabled(enabled: true);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -71,7 +73,16 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context);
+          final isAdmin = walletProvider.wallet?.isAdmin == true;
+          if (isAdmin) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              AdminRechargeHistoryScreen.routeName,
+              (route) => false,
+            );
+          } else {
+            Navigator.pop(context);
+          }
         } else {
           setState(() {
             _firstPin = null;
