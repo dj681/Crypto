@@ -61,9 +61,18 @@ class MarketProvider extends ChangeNotifier {
   // TODO(dj681): Replace this fixed fallback with a live FX feed for EUR display.
   // Fixed fallback rate used for UI-only conversion while no FX feed exists yet
   // (set in April 2026).
-  static const _usdtToEurRate = 0.92;
+  static const usdtToEurRate = 0.92;
   // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
+
+  /// Minimum buy amount (EUR) for each real-asset symbol.
+  static const Map<String, double> realAssetMinEur = {
+    'XAGUSD': 100,
+    'BRNUSD': 650,
+    'XPTUSD': 2000,
+    'XAUUSD': 10000,
+    'WTIUSD': 450,
+  };
 
   MarketProvider({
     required MarketService marketService,
@@ -90,7 +99,7 @@ class MarketProvider extends ChangeNotifier {
   String? get error => _cryptoError;
   String? get realAssetsError => _realAssetsError;
   double get accountBalanceUsdt => _accountBalanceUsdt;
-  double get accountBalanceEur => _accountBalanceUsdt * _usdtToEurRate;
+  double get accountBalanceEur => _accountBalanceUsdt * usdtToEurRate;
   List<TradeOrder> get orders => List.unmodifiable(_orders);
   bool get isLoading => _cryptoStatus == MarketStatus.loading;
   bool get isRealAssetsLoading => _realAssetsStatus == MarketStatus.loading;
@@ -248,6 +257,18 @@ class MarketProvider extends ChangeNotifier {
     final currentPosition = _positions[key] ?? 0;
 
     if (side == TradeSide.buy) {
+      if (market == 'real-assets') {
+        final minEur = realAssetMinEur[ticker.symbol];
+        if (minEur != null) {
+          final totalEur = total * usdtToEurRate;
+          if (totalEur < minEur) {
+            throw ArgumentError(
+              'Montant minimum requis\u00a0: ${minEur.toStringAsFixed(0)}\u00a0€ '
+              '(montant actuel\u00a0: ${totalEur.toStringAsFixed(2)}\u00a0€).',
+            );
+          }
+        }
+      }
       if (total > _accountBalanceUsdt) {
         throw StateError('Solde insuffisant pour cet achat.');
       }
