@@ -808,6 +808,39 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                       Text(
                         'Montant estimé: ${_formatAmount(total, maxFractionDigits: 2)} USDT',
                       ),
+                      if (widget.market == 'real-assets' &&
+                          _selectedSide == TradeSide.buy) ...[
+                        const SizedBox(height: 4),
+                        Builder(builder: (context) {
+                          const usdtToEur = 0.92;
+                          final totalEur = total * usdtToEur;
+                          final minEur =
+                              MarketProvider.realAssetMinEur[widget.ticker.symbol];
+                          final belowMin =
+                              minEur != null && totalEur < minEur;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Montant estimé: ${_formatAmount(totalEur, maxFractionDigits: 2)} EUR',
+                              ),
+                              if (minEur != null)
+                                Text(
+                                  'Minimum requis: ${minEur.toStringAsFixed(0)} EUR',
+                                  style: TextStyle(
+                                    color: belowMin
+                                        ? Theme.of(context).colorScheme.error
+                                        : Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.6),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          );
+                        }),
+                      ],
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,

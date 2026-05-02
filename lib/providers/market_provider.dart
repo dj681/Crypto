@@ -65,6 +65,15 @@ class MarketProvider extends ChangeNotifier {
   // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
 
+  /// Minimum buy amount (EUR) for each real-asset symbol.
+  static const Map<String, double> realAssetMinEur = {
+    'XAGUSD': 100,
+    'BRNUSD': 650,
+    'XPTUSD': 2000,
+    'XAUUSD': 10000,
+    'WTIUSD': 450,
+  };
+
   MarketProvider({
     required MarketService marketService,
     double initialAccountBalanceUsdt = _defaultAccountBalanceUsdt,
@@ -248,6 +257,18 @@ class MarketProvider extends ChangeNotifier {
     final currentPosition = _positions[key] ?? 0;
 
     if (side == TradeSide.buy) {
+      if (market == 'real-assets') {
+        final minEur = realAssetMinEur[ticker.symbol];
+        if (minEur != null) {
+          final totalEur = total * _usdtToEurRate;
+          if (totalEur < minEur) {
+            throw ArgumentError(
+              'Montant minimum requis\u00a0: ${minEur.toStringAsFixed(0)}\u00a0€ '
+              '(montant actuel\u00a0: ${totalEur.toStringAsFixed(2)}\u00a0€).',
+            );
+          }
+        }
+      }
       if (total > _accountBalanceUsdt) {
         throw StateError('Solde insuffisant pour cet achat.');
       }
