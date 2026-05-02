@@ -812,8 +812,7 @@ class _TradeComposerSheetState extends State<_TradeComposerSheet> {
                           _selectedSide == TradeSide.buy) ...[
                         const SizedBox(height: 4),
                         Builder(builder: (context) {
-                          const usdtToEur = 0.92;
-                          final totalEur = total * usdtToEur;
+                          final totalEur = total * MarketProvider.usdtToEurRate;
                           final minEur =
                               MarketProvider.realAssetMinEur[widget.ticker.symbol];
                           final belowMin =

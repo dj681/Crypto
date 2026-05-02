@@ -61,7 +61,7 @@ class MarketProvider extends ChangeNotifier {
   // TODO(dj681): Replace this fixed fallback with a live FX feed for EUR display.
   // Fixed fallback rate used for UI-only conversion while no FX feed exists yet
   // (set in April 2026).
-  static const _usdtToEurRate = 0.92;
+  static const usdtToEurRate = 0.92;
   // Tolerance to avoid tiny floating-point dust when a position should be closed.
   static const _positionEpsilon = 0.00000001;
 
@@ -99,7 +99,7 @@ class MarketProvider extends ChangeNotifier {
   String? get error => _cryptoError;
   String? get realAssetsError => _realAssetsError;
   double get accountBalanceUsdt => _accountBalanceUsdt;
-  double get accountBalanceEur => _accountBalanceUsdt * _usdtToEurRate;
+  double get accountBalanceEur => _accountBalanceUsdt * usdtToEurRate;
   List<TradeOrder> get orders => List.unmodifiable(_orders);
   bool get isLoading => _cryptoStatus == MarketStatus.loading;
   bool get isRealAssetsLoading => _realAssetsStatus == MarketStatus.loading;
@@ -260,7 +260,7 @@ class MarketProvider extends ChangeNotifier {
       if (market == 'real-assets') {
         final minEur = realAssetMinEur[ticker.symbol];
         if (minEur != null) {
-          final totalEur = total * _usdtToEurRate;
+          final totalEur = total * usdtToEurRate;
           if (totalEur < minEur) {
             throw ArgumentError(
               'Montant minimum requis\u00a0: ${minEur.toStringAsFixed(0)}\u00a0€ '
