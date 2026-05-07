@@ -34,6 +34,14 @@ import 'services/wallet_service.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
+void _runBackgroundInit(Future<void> task, String label) {
+  unawaited(
+    task.catchError((Object error, StackTrace stack) {
+      debugPrint('Background init failed [$label]: $error\n$stack');
+    }),
+  );
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final firebaseEnabled = await initializeFirebase();
@@ -45,15 +53,14 @@ Future<void> main() async {
   final walletService = WalletService();
   final firebaseUserService = FirebaseUserService(enabled: firebaseEnabled);
   final securityService = SecurityService();
-  final blockchainService =
-      BlockchainService(rpcUrl: savedRpcUrl);
+  final blockchainService = BlockchainService(rpcUrl: savedRpcUrl);
   final marketService = MarketService();
 
   final marketProvider = MarketProvider(marketService: marketService);
-  unawaited(marketProvider.loadState());
+  _runBackgroundInit(marketProvider.loadState(), 'market_state');
 
   final accountHistoryProvider = AccountHistoryProvider();
-  unawaited(accountHistoryProvider.loadState());
+  _runBackgroundInit(accountHistoryProvider.loadState(), 'account_history');
 
   runApp(
     MultiProvider(
