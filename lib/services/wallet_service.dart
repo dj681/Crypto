@@ -323,6 +323,7 @@ class WalletService {
 
   /// Returns [WalletModel] if a wallet is stored, or null otherwise.
   Future<WalletModel?> loadWallet() async {
+    final sw = Stopwatch()..start();
     var address = await _storage.read(key: _Keys.address);
 
     // Backward compatibility / recovery:
@@ -344,29 +345,24 @@ class WalletService {
 
     if (address == null || address.isEmpty) {
       final mnemonic = await _storage.read(key: _Keys.mnemonic);
-      if (mnemonic != null &&
-          mnemonic.isNotEmpty &&
-          validateMnemonic(mnemonic)) {
-        try {
-          final seed = await _seedFromMnemonic(mnemonic);
-          final privateKeyHex = _privateKeyHexFromSeed(seed);
-          final credentials = EthPrivateKey.fromHex(privateKeyHex);
-          address = credentials.address.hexEip55;
-          await Future.wait([
-            _storage.write(key: _Keys.privateKey, value: privateKeyHex),
-            _storage.write(key: _Keys.address, value: address),
-          ]);
-        } catch (e, st) {
-          debugPrint(
-            'Wallet recovery from mnemonic failed: $e\n$st',
-          );
-        }
-      } else if (mnemonic != null && mnemonic.isNotEmpty) {
-        debugPrint('Wallet recovery skipped: stored mnemonic is invalid.');
+      if (mnemonic != null && mnemonic.isNotEmpty) {
+        debugPrint(
+          'Wallet startup recovery deferred: mnemonic exists but address is missing. '
+          'User recovery import is required.',
+        );
+      }
+      if (address == null || address.isEmpty) {
+        sw.stop();
+        debugPrint('Startup timing [wallet_service_load]: ${sw.elapsedMilliseconds} ms');
+        return null;
       }
     }
 
-    if (address == null || address.isEmpty) return null;
+    if (address == null || address.isEmpty) {
+      sw.stop();
+      debugPrint('Startup timing [wallet_service_load]: ${sw.elapsedMilliseconds} ms');
+      return null;
+    }
 
     final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
     final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
@@ -411,7 +407,7 @@ class WalletService {
       }
     }
 
-    return WalletModel(
+    final model = WalletModel(
       address: address,
       hasPinEnabled:
           (isAdminAccount && _adminPinHash.isNotEmpty) || hasPinStr == 'true',
@@ -419,6 +415,19 @@ class WalletService {
       userId: userId,
       isAdmin: isAdminAccount,
     );
+    sw.stop();
+    debugPrint('Startup timing [wallet_service_load]: ${sw.elapsedMilliseconds} ms');
+    return model;
+  }
+
+  /// Returns true when local storage contains wallet remnants that require
+  /// explicit recovery import by the user (mnemonic present but no address).
+  Future<bool> requiresRecovery() async {
+    final address = await _storage.read(key: _Keys.address);
+    if (address != null && address.isNotEmpty) return false;
+
+    final mnemonic = await _storage.read(key: _Keys.mnemonic);
+    return mnemonic != null && mnemonic.isNotEmpty;
   }
 
   /// Loads the raw private key for signing transactions.

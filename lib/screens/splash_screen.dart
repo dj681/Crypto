@@ -9,6 +9,7 @@ import 'admin_recharge_history_screen.dart';
 import 'home_screen.dart';
 import 'lock_screen.dart';
 import 'onboarding_screen.dart';
+import 'wallet_import_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,24 +28,38 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _init() async {
+    final startupSw = Stopwatch()..start();
     try {
       final walletProvider = context.read<WalletProvider>();
       final securityProvider = context.read<SecurityProvider>();
 
-      // Load wallet and security state in parallel.
-      // A generous timeout ensures the app always navigates forward even when
-      // the device's secure storage or biometrics API hangs unexpectedly.
-      await Future.wait([
-        walletProvider.loadWallet(),
-        securityProvider.init(),
-      ]).timeout(const Duration(seconds: 10));
+      final walletSw = Stopwatch()..start();
+      await walletProvider
+          .loadWallet()
+          .timeout(const Duration(seconds: 6));
+      walletSw.stop();
+      debugPrint('Startup timing [splash_wallet_step]: ${walletSw.elapsedMilliseconds} ms');
 
       if (!mounted) return;
 
       if (!walletProvider.hasWallet) {
-        Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
+        Navigator.pushReplacementNamed(
+          context,
+          walletProvider.needsRecovery
+              ? WalletImportScreen.routeName
+              : OnboardingScreen.routeName,
+        );
         return;
       }
+
+      final securitySw = Stopwatch()..start();
+      await securityProvider
+          .init()
+          .timeout(const Duration(seconds: 4));
+      securitySw.stop();
+      debugPrint('Startup timing [splash_security_step]: ${securitySw.elapsedMilliseconds} ms');
+
+      if (!mounted) return;
 
       if (securityProvider.isLocked) {
         Navigator.pushReplacementNamed(context, LockScreen.routeName);
@@ -67,7 +82,20 @@ class _SplashScreenState extends State<SplashScreen> {
         );
       }
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
+      final walletProvider = context.read<WalletProvider>();
+      if (walletProvider.hasWallet) {
+        Navigator.pushReplacementNamed(context, LockScreen.routeName);
+      } else {
+        Navigator.pushReplacementNamed(
+          context,
+          walletProvider.needsRecovery
+              ? WalletImportScreen.routeName
+              : OnboardingScreen.routeName,
+        );
+      }
+    } finally {
+      startupSw.stop();
+      debugPrint('Startup timing [splash_total]: ${startupSw.elapsedMilliseconds} ms');
     }
   }
 
