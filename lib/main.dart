@@ -122,7 +122,8 @@ class _MyCryptoSafeAppState extends State<MyCryptoSafeApp>
       security.recordPauseTime();
     } else if (state == AppLifecycleState.resumed) {
       security.checkAndLockIfTimeout();
-      if (security.isLocked) {
+      final wallet = Provider.of<WalletProvider>(ctx, listen: false);
+      if (security.isLocked && wallet.hasWallet) {
         widget.navigatorKey.currentState?.pushNamedAndRemoveUntil(
           LockScreen.routeName,
           (route) => false,

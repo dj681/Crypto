@@ -6,10 +6,20 @@
     <title>Redirection…</title>
     <script>
       (function () {
-        const targetUrl = new URL("/", window.location.origin);
-        targetUrl.search = window.location.search;
-        targetUrl.hash = window.location.hash;
-        window.location.replace(targetUrl.toString());
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        // Convert a path-based URL to a hash-based URL so that Flutter web's
+        // hash router receives the correct initial route.
+        // e.g. /wallet/create  →  /#/wallet/create
+        if (path && path !== '/') {
+          window.location.replace(
+            window.location.origin + '/#' + path + search + hash
+          );
+        } else {
+          // Already at root – redirect to origin, preserving any hash fragment.
+          window.location.replace(window.location.origin + (hash || '/'));
+        }
       })();
     </script>
   </head>
