@@ -139,65 +139,70 @@ class MarketProvider extends ChangeNotifier {
   /// Restores persisted balance, positions and orders from [SharedPreferences].
   /// Falls back to defaults when no saved state exists (e.g. first launch).
   Future<void> loadState() async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    // Prefer the new atomic v2 key.
-    final stateRaw = prefs.getString(_keyStateV2);
-    if (stateRaw != null) {
-      final decoded = jsonDecode(stateRaw) as Map<String, dynamic>;
-      _accountBalanceUsdt = (decoded['balance'] as num).toDouble();
+      // Prefer the new atomic v2 key.
+      final stateRaw = prefs.getString(_keyStateV2);
+      if (stateRaw != null) {
+        final decoded = jsonDecode(stateRaw) as Map<String, dynamic>;
+        _accountBalanceUsdt = (decoded['balance'] as num).toDouble();
 
-      final positionsMap = decoded['positions'] as Map<String, dynamic>;
-      _positions
-        ..clear()
-        ..addAll(
-          positionsMap.map((k, v) => MapEntry(k, (v as num).toDouble())),
-        );
+        final positionsMap = decoded['positions'] as Map<String, dynamic>;
+        _positions
+          ..clear()
+          ..addAll(
+            positionsMap.map((k, v) => MapEntry(k, (v as num).toDouble())),
+          );
 
-      final ordersList = decoded['orders'] as List<dynamic>;
-      _orders
-        ..clear()
-        ..addAll(
-          ordersList.map((e) => TradeOrder.fromJson(e as Map<String, dynamic>)),
-        );
+        final ordersList = decoded['orders'] as List<dynamic>;
+        _orders
+          ..clear()
+          ..addAll(
+            ordersList
+                .map((e) => TradeOrder.fromJson(e as Map<String, dynamic>)),
+          );
 
-      notifyListeners();
-      return;
-    }
+        notifyListeners();
+        return;
+      }
 
-    // One-time migration from legacy v1 keys.
-    final balance = prefs.getDouble(_keyBalance);
-    if (balance != null) {
-      _accountBalanceUsdt = balance;
-    }
+      // One-time migration from legacy v1 keys.
+      final balance = prefs.getDouble(_keyBalance);
+      if (balance != null) {
+        _accountBalanceUsdt = balance;
+      }
 
-    final positionsRaw = prefs.getString(_keyPositions);
-    if (positionsRaw != null) {
-      final decoded = jsonDecode(positionsRaw) as Map<String, dynamic>;
-      _positions
-        ..clear()
-        ..addAll(decoded.map((k, v) => MapEntry(k, (v as num).toDouble())));
-    }
+      final positionsRaw = prefs.getString(_keyPositions);
+      if (positionsRaw != null) {
+        final decoded = jsonDecode(positionsRaw) as Map<String, dynamic>;
+        _positions
+          ..clear()
+          ..addAll(decoded.map((k, v) => MapEntry(k, (v as num).toDouble())));
+      }
 
-    final ordersRaw = prefs.getString(_keyOrders);
-    if (ordersRaw != null) {
-      final decoded = jsonDecode(ordersRaw) as List<dynamic>;
-      _orders
-        ..clear()
-        ..addAll(
-          decoded.map((e) => TradeOrder.fromJson(e as Map<String, dynamic>)),
-        );
-    }
+      final ordersRaw = prefs.getString(_keyOrders);
+      if (ordersRaw != null) {
+        final decoded = jsonDecode(ordersRaw) as List<dynamic>;
+        _orders
+          ..clear()
+          ..addAll(
+            decoded.map((e) => TradeOrder.fromJson(e as Map<String, dynamic>)),
+          );
+      }
 
-    // Persist migrated data in the new atomic format so subsequent loads use v2.
-    // Missing keys use the in-memory defaults already set above (empty positions,
-    // full starting balance), so saving partial v1 data is safe.
-    if (balance != null || positionsRaw != null || ordersRaw != null) {
-      await saveState();
-      // Remove legacy v1 keys now that data has been migrated.
-      await prefs.remove(_keyBalance);
-      await prefs.remove(_keyPositions);
-      await prefs.remove(_keyOrders);
+      // Persist migrated data in the new atomic format so subsequent loads use v2.
+      // Missing keys use the in-memory defaults already set above (empty positions,
+      // full starting balance), so saving partial v1 data is safe.
+      if (balance != null || positionsRaw != null || ordersRaw != null) {
+        await saveState();
+        // Remove legacy v1 keys now that data has been migrated.
+        await prefs.remove(_keyBalance);
+        await prefs.remove(_keyPositions);
+        await prefs.remove(_keyOrders);
+      }
+    } catch (e, st) {
+      debugPrint('MarketProvider.loadState failed – keeping defaults: $e\n$st');
     }
 
     notifyListeners();

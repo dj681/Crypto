@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:async' show TimeoutException, unawaited;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -32,10 +32,12 @@ class _SplashScreenState extends State<SplashScreen> {
       final securityProvider = context.read<SecurityProvider>();
 
       // Load wallet and security state in parallel.
+      // A generous timeout ensures the app always navigates forward even when
+      // the device's secure storage or biometrics API hangs unexpectedly.
       await Future.wait([
         walletProvider.loadWallet(),
         securityProvider.init(),
-      ]);
+      ]).timeout(const Duration(seconds: 10));
 
       if (!mounted) return;
 
@@ -59,6 +61,11 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint(
         'Splash init failed with unexpected error - navigating to onboarding: $e\n$st',
       );
+      if (e is TimeoutException) {
+        debugPrint(
+          'Startup timed out after 10 s – secure-storage may be unavailable.',
+        );
+      }
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, OnboardingScreen.routeName);
     }

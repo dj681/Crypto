@@ -54,6 +54,9 @@ jobs:
       - name: Write CNAME
         run: echo "mycryptosafe.fr" > build/web/CNAME
 
+      - name: Copy 404 fallback for SPA routing
+        run: cp 404.html build/web/404.html
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
