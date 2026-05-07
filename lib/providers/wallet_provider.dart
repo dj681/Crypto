@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../models/tx_record.dart';
@@ -40,7 +38,7 @@ class WalletProvider extends ChangeNotifier {
       _wallet = await _service.loadWallet();
       if (_wallet != null) {
         _history = await _service.loadHistory();
-        _syncWalletProfile(_wallet!);
+        await _syncWalletProfile(_wallet!);
       }
       _status = WalletStatus.ready;
       notifyListeners();
@@ -60,7 +58,7 @@ class WalletProvider extends ChangeNotifier {
     try {
       _wallet = await _service.createWallet(mnemonic);
       _history = [];
-      _syncWalletProfile(_wallet!);
+      await _syncWalletProfile(_wallet!);
       _status = WalletStatus.ready;
       notifyListeners();
     } catch (e) {
@@ -78,7 +76,7 @@ class WalletProvider extends ChangeNotifier {
     try {
       _wallet = await _service.importWallet(mnemonic);
       _history = await _service.loadHistory();
-      _syncWalletProfile(_wallet!);
+      await _syncWalletProfile(_wallet!);
       _status = WalletStatus.ready;
       notifyListeners();
     } on ArgumentError catch (e) {
@@ -104,7 +102,7 @@ class WalletProvider extends ChangeNotifier {
     if (_wallet == null) return;
     await _service.setPinEnabled(enabled: enabled);
     _wallet = _wallet!.copyWith(hasPinEnabled: enabled);
-    _syncWalletProfile(_wallet!);
+    await _syncWalletProfile(_wallet!);
     notifyListeners();
   }
 
@@ -112,7 +110,7 @@ class WalletProvider extends ChangeNotifier {
     if (_wallet == null) return;
     await _service.setBiometricsEnabled(enabled: enabled);
     _wallet = _wallet!.copyWith(hasBiometricsEnabled: enabled);
-    _syncWalletProfile(_wallet!);
+    await _syncWalletProfile(_wallet!);
     notifyListeners();
   }
 
@@ -121,13 +119,13 @@ class WalletProvider extends ChangeNotifier {
   Future<void> clearWallet() async {
     final userId = _wallet?.userId;
     await _service.clearWallet();
+    if (userId != null && userId.isNotEmpty) {
+      await _firebaseUserService.deleteUserProfile(userId);
+    }
     _wallet = null;
     _history = [];
     _status = WalletStatus.idle;
     notifyListeners();
-    if (userId != null && userId.isNotEmpty) {
-      await _firebaseUserService.deleteUserProfile(userId);
-    }
   }
 
   // ── internals ─────────────────────────────────────────────────────────────
@@ -144,15 +142,13 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _syncWalletProfile(WalletModel wallet) {
-    unawaited(
-      _firebaseUserService.upsertUserProfile(
-        userId: wallet.userId,
-        address: wallet.address,
-        hasPinEnabled: wallet.hasPinEnabled,
-        hasBiometricsEnabled: wallet.hasBiometricsEnabled,
-        isAdmin: wallet.isAdmin,
-      ),
+  Future<void> _syncWalletProfile(WalletModel wallet) {
+    return _firebaseUserService.upsertUserProfile(
+      userId: wallet.userId,
+      address: wallet.address,
+      hasPinEnabled: wallet.hasPinEnabled,
+      hasBiometricsEnabled: wallet.hasBiometricsEnabled,
+      isAdmin: wallet.isAdmin,
     );
   }
 }

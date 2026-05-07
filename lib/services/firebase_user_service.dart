@@ -46,15 +46,17 @@ class FirebaseUserService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      try {
-        await docRef.update(payload);
-      } on FirebaseException catch (e) {
-        if (e.code != 'not-found') rethrow;
-        await docRef.set({
-          ...payload,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(docRef);
+        if (snapshot.exists) {
+          transaction.set(docRef, payload, SetOptions(merge: true));
+        } else {
+          transaction.set(docRef, {
+            ...payload,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      });
     } on FirebaseException catch (e, st) {
       debugPrint('Firestore sync failed [${e.code}]: ${e.message}\n$st');
     } catch (e, st) {
