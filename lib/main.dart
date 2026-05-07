@@ -24,6 +24,8 @@ import 'screens/splash_screen.dart';
 import 'screens/wallet_create_screen.dart';
 import 'screens/wallet_import_screen.dart';
 import 'services/blockchain_service.dart';
+import 'services/firebase_bootstrap.dart';
+import 'services/firebase_user_service.dart';
 import 'services/market_service.dart';
 import 'services/security_service.dart';
 import 'services/wallet_service.dart';
@@ -32,12 +34,14 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final firebaseEnabled = await initializeFirebase();
 
   // Load persisted RPC URL (defaults to a public endpoint without API key).
   final prefs = await SharedPreferences.getInstance();
   final savedRpcUrl = prefs.getString('rpc_url');
 
   final walletService = WalletService();
+  final firebaseUserService = FirebaseUserService(enabled: firebaseEnabled);
   final securityService = SecurityService();
   final blockchainService =
       BlockchainService(rpcUrl: savedRpcUrl);
@@ -53,7 +57,10 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => WalletProvider(walletService),
+          create: (_) => WalletProvider(
+            walletService,
+            firebaseUserService: firebaseUserService,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => SecurityProvider(securityService),
