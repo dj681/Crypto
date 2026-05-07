@@ -44,6 +44,7 @@ jobs:
         run: |
           flutter build web \
             --release \
+            --web-renderer canvaskit \
             --base-href / \
             --dart-define=PWA_URL=https://mycryptosafe.fr/ \
             ${ADMIN_PHRASE:+--dart-define=ADMIN_PHRASE="$ADMIN_PHRASE"} \
