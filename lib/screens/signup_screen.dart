@@ -295,6 +295,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   style: TextStyle(color: colorScheme.error),
                 ),
               ],
+              const SizedBox(height: 16),
+
+              // ── Submit ─────────────────────────────────────────────────────
+              ElevatedButton(
+                onPressed: _isLoading ? null : _signUp,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Créer un portefeuille'),
+              ),
             ],
           ),
         ),
