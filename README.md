@@ -16,6 +16,8 @@ lib/
     blockchain_service.dart       # Client web3dart : balance, envoi, gas
     security_service.dart         # PIN (SHA-256), biométrie (local_auth)
     market_service.dart           # API marché applicative (backend) + fallback
+    firebase_bootstrap.dart       # Initialisation Firebase au démarrage
+    firebase_user_service.dart    # Sync profil utilisateur non-sensible vers Firestore
   providers/
     wallet_provider.dart          # État global du portefeuille + historique
     blockchain_provider.dart      # Solde ETH, envoi de transactions
@@ -91,6 +93,38 @@ bin/
    ```
    flutter run
    ```
+
+### Configuration Firebase (Firestore)
+
+1. Créer un projet sur https://console.firebase.google.com puis activer :
+   - **Authentication** → fournisseur **Anonymous**
+   - **Cloud Firestore** (mode production)
+
+2. Générer la configuration FlutterFire :
+   ```bash
+   dart pub global activate flutterfire_cli
+   flutterfire configure
+   ```
+
+3. Lancer l'app avec les `--dart-define` Firebase requis :
+   ```bash
+   flutter run \
+     --dart-define=FIREBASE_API_KEY=... \
+     --dart-define=FIREBASE_APP_ID=... \
+     --dart-define=FIREBASE_MESSAGING_SENDER_ID=... \
+     --dart-define=FIREBASE_PROJECT_ID=... \
+     --dart-define=FIREBASE_AUTH_DOMAIN=... \
+     --dart-define=FIREBASE_STORAGE_BUCKET=... \
+     --dart-define=FIREBASE_MEASUREMENT_ID=...
+   ```
+
+4. Déployer les règles Firestore :
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+Le document Firestore utilisateur est stocké dans `users/{userId}` où `userId`
+est l'identifiant déjà généré par `WalletService`.
 
 ### Backend (recommandé)
 
@@ -273,6 +307,9 @@ Dans `android/app/build.gradle`, s'assurer que :
 | `local_auth` | Authentification biométrique |
 | `shared_preferences` | Préférences non-sensibles (URL RPC) |
 | `crypto` | Hachage SHA-256 du PIN |
+| `firebase_core` | Initialisation Firebase |
+| `firebase_auth` | Authentification anonyme pour session Firestore |
+| `cloud_firestore` | Stockage cloud des données utilisateur non-sensibles |
 
 ## Note sur la dérivation de clé
 

@@ -1,16 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/tx_record.dart';
 import '../models/wallet.dart';
+import '../services/firebase_user_service.dart';
 import '../services/wallet_service.dart';
 
 enum WalletStatus { idle, loading, ready, error }
 
 /// Global wallet state: holds the loaded wallet model and transaction history.
 class WalletProvider extends ChangeNotifier {
-  WalletProvider(this._service);
+  WalletProvider(
+    this._service, {
+    FirebaseUserService? firebaseUserService,
+  }) : _firebaseUserService = firebaseUserService ?? FirebaseUserService();
 
   final WalletService _service;
+  final FirebaseUserService _firebaseUserService;
 
   WalletModel? _wallet;
   List<TxRecord> _history = [];
@@ -33,6 +40,7 @@ class WalletProvider extends ChangeNotifier {
       _wallet = await _service.loadWallet();
       if (_wallet != null) {
         _history = await _service.loadHistory();
+        _syncWalletProfile(_wallet!);
       }
       _status = WalletStatus.ready;
       notifyListeners();
@@ -52,6 +60,7 @@ class WalletProvider extends ChangeNotifier {
     try {
       _wallet = await _service.createWallet(mnemonic);
       _history = [];
+      _syncWalletProfile(_wallet!);
       _status = WalletStatus.ready;
       notifyListeners();
     } catch (e) {
@@ -69,6 +78,7 @@ class WalletProvider extends ChangeNotifier {
     try {
       _wallet = await _service.importWallet(mnemonic);
       _history = await _service.loadHistory();
+      _syncWalletProfile(_wallet!);
       _status = WalletStatus.ready;
       notifyListeners();
     } on ArgumentError catch (e) {
@@ -94,6 +104,7 @@ class WalletProvider extends ChangeNotifier {
     if (_wallet == null) return;
     await _service.setPinEnabled(enabled: enabled);
     _wallet = _wallet!.copyWith(hasPinEnabled: enabled);
+    _syncWalletProfile(_wallet!);
     notifyListeners();
   }
 
@@ -101,17 +112,22 @@ class WalletProvider extends ChangeNotifier {
     if (_wallet == null) return;
     await _service.setBiometricsEnabled(enabled: enabled);
     _wallet = _wallet!.copyWith(hasBiometricsEnabled: enabled);
+    _syncWalletProfile(_wallet!);
     notifyListeners();
   }
 
   // ── clear ─────────────────────────────────────────────────────────────────
 
   Future<void> clearWallet() async {
+    final userId = _wallet?.userId;
     await _service.clearWallet();
     _wallet = null;
     _history = [];
     _status = WalletStatus.idle;
     notifyListeners();
+    if (userId != null && userId.isNotEmpty) {
+      unawaited(_firebaseUserService.deleteUserProfile(userId));
+    }
   }
 
   // ── internals ─────────────────────────────────────────────────────────────
@@ -126,5 +142,17 @@ class WalletProvider extends ChangeNotifier {
     _status = WalletStatus.error;
     _error = message;
     notifyListeners();
+  }
+
+  void _syncWalletProfile(WalletModel wallet) {
+    unawaited(
+      _firebaseUserService.upsertUserProfile(
+        userId: wallet.userId,
+        address: wallet.address,
+        hasPinEnabled: wallet.hasPinEnabled,
+        hasBiometricsEnabled: wallet.hasBiometricsEnabled,
+        isAdmin: wallet.isAdmin,
+      ),
+    );
   }
 }
