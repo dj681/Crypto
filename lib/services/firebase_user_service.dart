@@ -36,8 +36,6 @@ class FirebaseUserService {
       if (ownerUid == null || ownerUid.isEmpty) return;
 
       final docRef = _users.doc(userId);
-      final existing = await docRef.get();
-
       final payload = <String, dynamic>{
         'userId': userId,
         'address': address,
@@ -48,9 +46,10 @@ class FirebaseUserService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      if (existing.exists) {
-        await docRef.set(payload, SetOptions(merge: true));
-      } else {
+      try {
+        await docRef.update(payload);
+      } on FirebaseException catch (e) {
+        if (e.code != 'not-found') rethrow;
         await docRef.set({
           ...payload,
           'createdAt': FieldValue.serverTimestamp(),
