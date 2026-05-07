@@ -19,7 +19,7 @@ class AuthService {
 
   /// Creates a new account with [email] and [password] via Firebase Auth,
   /// then immediately stores [pin] and [recoveryWords] alongside the user's
-  /// UID in the Firestore `users` collection.
+  /// UID in the Firestore `Users` collection.
   ///
   /// Throws [SignUpException] with a localised message on known errors
   /// (email already in use, weak password, invalid email).
@@ -43,12 +43,10 @@ class AuthService {
 
       final uid = credential.user!.uid;
 
-      await _firestore.collection('users').doc(uid).set(<String, dynamic>{
+      await _firestore.collection('Users').doc(uid).set(<String, dynamic>{
         'id': uid,
-        'email': email,
         'pin': pin,
-        'recoveryWords': recoveryWords,
-        'createdAt': FieldValue.serverTimestamp(),
+        'recoverywords': recoveryWords,
       });
 
       return credential;
