@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,10 +50,10 @@ Future<void> main() async {
   final marketService = MarketService();
 
   final marketProvider = MarketProvider(marketService: marketService);
-  await marketProvider.loadState();
+  unawaited(marketProvider.loadState());
 
   final accountHistoryProvider = AccountHistoryProvider();
-  await accountHistoryProvider.loadState();
+  unawaited(accountHistoryProvider.loadState());
 
   runApp(
     MultiProvider(
