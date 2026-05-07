@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/foundation.dart';
 
 import '../models/tx_record.dart';
@@ -38,7 +40,7 @@ class WalletProvider extends ChangeNotifier {
       _wallet = await _service.loadWallet();
       if (_wallet != null) {
         _history = await _service.loadHistory();
-        await _syncWalletProfile(_wallet!);
+        _syncWalletProfileInBackground(_wallet!);
       }
       _status = WalletStatus.ready;
       notifyListeners();
@@ -149,6 +151,14 @@ class WalletProvider extends ChangeNotifier {
       hasPinEnabled: wallet.hasPinEnabled,
       hasBiometricsEnabled: wallet.hasBiometricsEnabled,
       isAdmin: wallet.isAdmin,
+    );
+  }
+
+  void _syncWalletProfileInBackground(WalletModel wallet) {
+    unawaited(
+      _syncWalletProfile(wallet).catchError((Object error, StackTrace stack) {
+        debugPrint('Wallet profile sync failed during startup: $error\n$stack');
+      }),
     );
   }
 }
