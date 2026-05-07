@@ -88,6 +88,8 @@ Future<void> main() async {
     enabled: DefaultFirebaseOptions.isConfigured,
   );
   final securityService = SecurityService();
+  // Starts with default public RPC URL, then applies persisted user URL
+  // asynchronously in _bootstrapStartup().
   final blockchainService = BlockchainService();
   final marketService = MarketService();
 

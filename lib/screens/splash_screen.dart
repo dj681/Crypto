@@ -29,8 +29,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _init() async {
     final startupSw = Stopwatch()..start();
+    final walletProvider = context.read<WalletProvider>();
     try {
-      final walletProvider = context.read<WalletProvider>();
       final securityProvider = context.read<SecurityProvider>();
 
       final walletSw = Stopwatch()..start();
@@ -82,7 +82,6 @@ class _SplashScreenState extends State<SplashScreen> {
         );
       }
       if (!mounted) return;
-      final walletProvider = context.read<WalletProvider>();
       if (walletProvider.hasWallet) {
         Navigator.pushReplacementNamed(context, LockScreen.routeName);
       } else {
