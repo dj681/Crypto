@@ -358,12 +358,6 @@ class WalletService {
       }
     }
 
-    if (address == null || address.isEmpty) {
-      sw.stop();
-      debugPrint('Startup timing [wallet_service_load]: ${sw.elapsedMilliseconds} ms');
-      return null;
-    }
-
     final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
     final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
 
