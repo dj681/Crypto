@@ -323,102 +323,103 @@ class WalletService {
 
   /// Returns [WalletModel] if a wallet is stored, or null otherwise.
   Future<WalletModel?> loadWallet() async {
-    var address = await _storage.read(key: _Keys.address);
+    final sw = Stopwatch()..start();
+    try {
+      var address = await _storage.read(key: _Keys.address);
 
-    // Backward compatibility / recovery:
-    // if address is missing but private key or mnemonic still exists, rebuild it.
-    if (address == null || address.isEmpty) {
-      final privateKeyHex = await _storage.read(key: _Keys.privateKey);
-      if (privateKeyHex != null && privateKeyHex.isNotEmpty) {
-        try {
-          final credentials = EthPrivateKey.fromHex(privateKeyHex);
-          address = credentials.address.hexEip55;
-          await _storage.write(key: _Keys.address, value: address);
-        } catch (e, st) {
+      // Backward compatibility / recovery:
+      // if address is missing but private key or mnemonic still exists, rebuild it.
+      if (address == null || address.isEmpty) {
+        final privateKeyHex = await _storage.read(key: _Keys.privateKey);
+        if (privateKeyHex != null && privateKeyHex.isNotEmpty) {
+          try {
+            final credentials = EthPrivateKey.fromHex(privateKeyHex);
+            address = credentials.address.hexEip55;
+            await _storage.write(key: _Keys.address, value: address);
+          } catch (e, st) {
+            debugPrint(
+              'Wallet recovery from private key failed, trying mnemonic fallback: $e\n$st',
+            );
+          }
+        }
+      }
+
+      if (address == null || address.isEmpty) {
+        final mnemonic = await _storage.read(key: _Keys.mnemonic);
+        if (mnemonic != null && mnemonic.isNotEmpty) {
           debugPrint(
-            'Wallet recovery from private key failed, trying mnemonic fallback: $e\n$st',
+            'Wallet startup recovery deferred: mnemonic exists but address is missing. '
+            'User recovery import is required.',
           );
         }
+        return null;
       }
-    }
 
-    if (address == null || address.isEmpty) {
-      final mnemonic = await _storage.read(key: _Keys.mnemonic);
-      if (mnemonic != null &&
-          mnemonic.isNotEmpty &&
-          validateMnemonic(mnemonic)) {
-        try {
-          final seed = await _seedFromMnemonic(mnemonic);
-          final privateKeyHex = _privateKeyHexFromSeed(seed);
-          final credentials = EthPrivateKey.fromHex(privateKeyHex);
-          address = credentials.address.hexEip55;
-          await Future.wait([
-            _storage.write(key: _Keys.privateKey, value: privateKeyHex),
-            _storage.write(key: _Keys.address, value: address),
-          ]);
-        } catch (e, st) {
-          debugPrint(
-            'Wallet recovery from mnemonic failed: $e\n$st',
-          );
+      final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
+      final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
+
+      // Load existing userId, or generate + persist one for pre-existing wallets.
+      var userId = await _storage.read(key: _Keys.userId);
+      if (userId == null || userId.isEmpty) {
+        userId = _generateUserId();
+        await _storage.write(key: _Keys.userId, value: userId);
+      }
+
+      final isAdminStr = await _storage.read(key: _Keys.isAdmin);
+      // The isAdmin flag is always persisted at creation/import time (since this
+      // feature was introduced). If the key is absent the account is not admin.
+      var isAdminAccount = isAdminStr == 'true';
+
+      // Migration: if the flag is not yet set to true but an ADMIN_PHRASE is
+      // configured at build time, re-check the stored mnemonic so that accounts
+      // imported before the admin feature (or before ADMIN_PHRASE was defined)
+      // are automatically promoted without requiring a re-import.
+      if (!isAdminAccount && adminRecoveryPhrase.isNotEmpty) {
+        final storedMnemonic = await _storage.read(key: _Keys.mnemonic);
+        if (storedMnemonic != null &&
+            storedMnemonic.isNotEmpty &&
+            _isAdminPhrase(_normalizePhrase(storedMnemonic))) {
+          isAdminAccount = true;
+          // Persist the corrected flag and, if an ADMIN_PIN was provided,
+          // also ensure the pin hash and hasPinEnabled are set.
+          final adminWrites = <Future<void>>[
+            _storage.write(key: _Keys.isAdmin, value: 'true'),
+            _storage.write(key: _Keys.userId, value: _adminUserId),
+          ];
+          if (_adminPinHash.isNotEmpty) {
+            adminWrites.addAll([
+              _storage.write(key: _Keys.pinHash, value: _adminPinHash),
+              _storage.write(key: _Keys.hasPinEnabled, value: 'true'),
+            ]);
+          }
+          await Future.wait(adminWrites);
+          // Update local variables to reflect the corrected state.
+          userId = _adminUserId;
         }
-      } else if (mnemonic != null && mnemonic.isNotEmpty) {
-        debugPrint('Wallet recovery skipped: stored mnemonic is invalid.');
       }
+
+      return WalletModel(
+        address: address,
+        hasPinEnabled:
+            (isAdminAccount && _adminPinHash.isNotEmpty) || hasPinStr == 'true',
+        hasBiometricsEnabled: hasBioStr == 'true',
+        userId: userId,
+        isAdmin: isAdminAccount,
+      );
+    } finally {
+      sw.stop();
+      debugPrint('Startup timing [wallet_service_load]: ${sw.elapsedMilliseconds} ms');
     }
+  }
 
-    if (address == null || address.isEmpty) return null;
+  /// Returns true when local storage contains wallet remnants that require
+  /// explicit recovery import by the user (mnemonic present but no address).
+  Future<bool> requiresRecovery() async {
+    final address = await _storage.read(key: _Keys.address);
+    if (address != null && address.isNotEmpty) return false;
 
-    final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);
-    final hasBioStr = await _storage.read(key: _Keys.hasBiometricsEnabled);
-
-    // Load existing userId, or generate + persist one for pre-existing wallets.
-    var userId = await _storage.read(key: _Keys.userId);
-    if (userId == null || userId.isEmpty) {
-      userId = _generateUserId();
-      await _storage.write(key: _Keys.userId, value: userId);
-    }
-
-    final isAdminStr = await _storage.read(key: _Keys.isAdmin);
-    // The isAdmin flag is always persisted at creation/import time (since this
-    // feature was introduced). If the key is absent the account is not admin.
-    var isAdminAccount = isAdminStr == 'true';
-
-    // Migration: if the flag is not yet set to true but an ADMIN_PHRASE is
-    // configured at build time, re-check the stored mnemonic so that accounts
-    // imported before the admin feature (or before ADMIN_PHRASE was defined)
-    // are automatically promoted without requiring a re-import.
-    if (!isAdminAccount && adminRecoveryPhrase.isNotEmpty) {
-      final storedMnemonic = await _storage.read(key: _Keys.mnemonic);
-      if (storedMnemonic != null &&
-          storedMnemonic.isNotEmpty &&
-          _isAdminPhrase(_normalizePhrase(storedMnemonic))) {
-        isAdminAccount = true;
-        // Persist the corrected flag and, if an ADMIN_PIN was provided,
-        // also ensure the pin hash and hasPinEnabled are set.
-        final adminWrites = <Future<void>>[
-          _storage.write(key: _Keys.isAdmin, value: 'true'),
-          _storage.write(key: _Keys.userId, value: _adminUserId),
-        ];
-        if (_adminPinHash.isNotEmpty) {
-          adminWrites.addAll([
-            _storage.write(key: _Keys.pinHash, value: _adminPinHash),
-            _storage.write(key: _Keys.hasPinEnabled, value: 'true'),
-          ]);
-        }
-        await Future.wait(adminWrites);
-        // Update local variables to reflect the corrected state.
-        userId = _adminUserId;
-      }
-    }
-
-    return WalletModel(
-      address: address,
-      hasPinEnabled:
-          (isAdminAccount && _adminPinHash.isNotEmpty) || hasPinStr == 'true',
-      hasBiometricsEnabled: hasBioStr == 'true',
-      userId: userId,
-      isAdmin: isAdminAccount,
-    );
+    final mnemonic = await _storage.read(key: _Keys.mnemonic);
+    return mnemonic != null && mnemonic.isNotEmpty;
   }
 
   /// Loads the raw private key for signing transactions.

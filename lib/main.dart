@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'firebase_options.dart';
 import 'providers/account_history_provider.dart';
 import 'providers/blockchain_provider.dart';
 import 'providers/market_provider.dart';
@@ -33,6 +34,8 @@ import 'services/security_service.dart';
 import 'services/wallet_service.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+const Duration _firebaseInitTimeout = Duration(seconds: 8);
+const Duration _prefsInitTimeout = Duration(seconds: 4);
 
 void _runBackgroundInit(Future<void> task, String label) {
   unawaited(
@@ -42,20 +45,58 @@ void _runBackgroundInit(Future<void> task, String label) {
   );
 }
 
+Future<T> _measureStartup<T>(String label, Future<T> Function() work) async {
+  final sw = Stopwatch()..start();
+  try {
+    return await work();
+  } finally {
+    sw.stop();
+    debugPrint('Startup timing [$label]: ${sw.elapsedMilliseconds} ms');
+  }
+}
+
+Future<void> _bootstrapStartup({
+  required BlockchainProvider blockchainProvider,
+}) async {
+  await _measureStartup('firebase_init', () async {
+    if (!DefaultFirebaseOptions.isConfigured) {
+      debugPrint(
+        'Startup bootstrap: Firebase skipped (missing FIREBASE_* dart-define values).',
+      );
+      return;
+    }
+    final ok = await initializeFirebase().timeout(_firebaseInitTimeout);
+    if (!ok) {
+      debugPrint('Startup bootstrap: Firebase disabled due to init failure.');
+    }
+  });
+
+  await _measureStartup('prefs_rpc_load', () async {
+    final prefs = await SharedPreferences.getInstance().timeout(_prefsInitTimeout);
+    final savedRpcUrl = prefs.getString('rpc_url');
+    if (savedRpcUrl != null && savedRpcUrl.trim().isNotEmpty) {
+      blockchainProvider.updateRpcUrl(savedRpcUrl);
+    }
+  });
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final firebaseEnabled = await initializeFirebase();
-
-  // Load persisted RPC URL (defaults to a public endpoint without API key).
-  final prefs = await SharedPreferences.getInstance();
-  final savedRpcUrl = prefs.getString('rpc_url');
 
   final walletService = WalletService();
-  final firebaseUserService = FirebaseUserService(enabled: firebaseEnabled);
+  final firebaseUserService = FirebaseUserService(
+    enabled: DefaultFirebaseOptions.isConfigured,
+  );
   final securityService = SecurityService();
-  final blockchainService = BlockchainService(rpcUrl: savedRpcUrl);
+  // Starts with default public RPC URL, then applies persisted user URL
+  // asynchronously in _bootstrapStartup().
+  final blockchainService = BlockchainService();
   final marketService = MarketService();
 
+  final blockchainProvider = BlockchainProvider(
+    blockchainService: blockchainService,
+    walletService: walletService,
+  );
   final marketProvider = MarketProvider(marketService: marketService);
   _runBackgroundInit(marketProvider.loadState(), 'market_state');
 
@@ -75,16 +116,18 @@ Future<void> main() async {
           create: (_) => SecurityProvider(securityService),
         ),
         ChangeNotifierProvider(
-          create: (_) => BlockchainProvider(
-            blockchainService: blockchainService,
-            walletService: walletService,
-          ),
+          create: (_) => blockchainProvider,
         ),
         ChangeNotifierProvider.value(value: marketProvider),
         ChangeNotifierProvider.value(value: accountHistoryProvider),
       ],
       child: MyCryptoSafeApp(navigatorKey: _navigatorKey),
     ),
+  );
+
+  _runBackgroundInit(
+    _bootstrapStartup(blockchainProvider: blockchainProvider),
+    'startup_bootstrap',
   );
 }
 

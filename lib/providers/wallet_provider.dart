@@ -23,6 +23,7 @@ class WalletProvider extends ChangeNotifier {
   List<TxRecord> _history = [];
   WalletStatus _status = WalletStatus.idle;
   String? _error;
+  bool _needsRecovery = false;
 
   WalletModel? get wallet => _wallet;
   List<TxRecord> get history => List.unmodifiable(_history);
@@ -30,22 +31,31 @@ class WalletProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasWallet => _wallet != null;
   bool get isLoading => _status == WalletStatus.loading;
+  bool get needsRecovery => _needsRecovery;
 
   // ── load ──────────────────────────────────────────────────────────────────
 
   /// Loads the persisted wallet (if any) from secure storage.
+  /// History refresh continues asynchronously in background to keep startup fast.
   Future<void> loadWallet() async {
+    final sw = Stopwatch()..start();
     _setLoading();
     try {
       _wallet = await _service.loadWallet();
+      _needsRecovery = _wallet == null && await _service.requiresRecovery();
       if (_wallet != null) {
-        _history = await _service.loadHistory();
+        _loadHistoryInBackground();
         _syncWalletProfileInBackground(_wallet!);
+      } else {
+        _history = [];
       }
       _status = WalletStatus.ready;
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
+    } finally {
+      sw.stop();
+      debugPrint('Startup timing [wallet_load]: ${sw.elapsedMilliseconds} ms');
     }
   }
 
@@ -158,6 +168,17 @@ class WalletProvider extends ChangeNotifier {
     unawaited(
       _syncWalletProfile(wallet).catchError((Object error, StackTrace stack) {
         debugPrint('Wallet profile sync failed during startup: $error\n$stack');
+      }),
+    );
+  }
+
+  void _loadHistoryInBackground() {
+    unawaited(
+      _service.loadHistory().then((history) {
+        _history = history;
+        notifyListeners();
+      }).catchError((Object error, StackTrace stack) {
+        debugPrint('Wallet history load failed during startup: $error\n$stack');
       }),
     );
   }

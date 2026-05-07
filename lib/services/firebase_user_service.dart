@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 /// Handles non-sensitive user profile sync to Firestore.
@@ -10,16 +11,21 @@ class FirebaseUserService {
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
     bool enabled = true,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _auth = auth,
+        _firestore = firestore,
         _enabled = enabled;
 
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
+  final FirebaseAuth? _auth;
+  final FirebaseFirestore? _firestore;
   final bool _enabled;
 
+  FirebaseAuth get _authOrDefault => _auth ?? FirebaseAuth.instance;
+  FirebaseFirestore get _firestoreOrDefault =>
+      _firestore ?? FirebaseFirestore.instance;
+  bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
+
   CollectionReference<Map<String, dynamic>> get _users =>
-      _firestore.collection('users');
+      _firestoreOrDefault.collection('users');
 
   Future<void> upsertUserProfile({
     required String userId,
@@ -28,11 +34,11 @@ class FirebaseUserService {
     required bool hasBiometricsEnabled,
     required bool isAdmin,
   }) async {
-    if (!_enabled) return;
+    if (!_enabled || !_isFirebaseReady) return;
 
     try {
       await _ensureSignedIn();
-      final ownerUid = _auth.currentUser?.uid;
+      final ownerUid = _authOrDefault.currentUser?.uid;
       if (ownerUid == null || ownerUid.isEmpty) return;
 
       final docRef = _users.doc(userId);
@@ -46,7 +52,7 @@ class FirebaseUserService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.runTransaction((transaction) async {
+      await _firestoreOrDefault.runTransaction((transaction) async {
         final snapshot = await transaction.get(docRef);
         if (snapshot.exists) {
           transaction.set(docRef, payload, SetOptions(merge: true));
@@ -65,7 +71,7 @@ class FirebaseUserService {
   }
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
-    if (!_enabled) return null;
+    if (!_enabled || !_isFirebaseReady) return null;
 
     try {
       await _ensureSignedIn();
@@ -78,7 +84,7 @@ class FirebaseUserService {
   }
 
   Future<void> deleteUserProfile(String userId) async {
-    if (!_enabled) return;
+    if (!_enabled || !_isFirebaseReady) return;
 
     try {
       await _ensureSignedIn();
@@ -91,7 +97,9 @@ class FirebaseUserService {
   }
 
   Future<void> _ensureSignedIn() async {
-    if (!_enabled || _auth.currentUser != null) return;
-    await _auth.signInAnonymously();
+    if (!_enabled || !_isFirebaseReady || _authOrDefault.currentUser != null) {
+      return;
+    }
+    await _authOrDefault.signInAnonymously();
   }
 }
