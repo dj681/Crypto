@@ -306,7 +306,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         width: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('S\'inscrire'),
+                    : const Text('Créer un portefeuille'),
               ),
             ],
           ),
