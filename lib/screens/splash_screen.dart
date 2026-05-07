@@ -21,6 +21,13 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  String _startupFallbackRoute(WalletProvider walletProvider) {
+    if (walletProvider.hasWallet) return LockScreen.routeName;
+    return walletProvider.needsRecovery
+        ? WalletImportScreen.routeName
+        : OnboardingScreen.routeName;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -34,10 +41,13 @@ class _SplashScreenState extends State<SplashScreen> {
       final securityProvider = context.read<SecurityProvider>();
 
       final walletSw = Stopwatch()..start();
-      await walletProvider
-          .loadWallet()
-          .timeout(const Duration(seconds: 6));
-      walletSw.stop();
+      try {
+        await walletProvider
+            .loadWallet()
+            .timeout(const Duration(seconds: 6));
+      } finally {
+        walletSw.stop();
+      }
       debugPrint('Startup timing [splash_wallet_step]: ${walletSw.elapsedMilliseconds} ms');
 
       if (!mounted) return;
@@ -45,18 +55,19 @@ class _SplashScreenState extends State<SplashScreen> {
       if (!walletProvider.hasWallet) {
         Navigator.pushReplacementNamed(
           context,
-          walletProvider.needsRecovery
-              ? WalletImportScreen.routeName
-              : OnboardingScreen.routeName,
+          _startupFallbackRoute(walletProvider),
         );
         return;
       }
 
       final securitySw = Stopwatch()..start();
-      await securityProvider
-          .init()
-          .timeout(const Duration(seconds: 4));
-      securitySw.stop();
+      try {
+        await securityProvider
+            .init()
+            .timeout(const Duration(seconds: 4));
+      } finally {
+        securitySw.stop();
+      }
       debugPrint('Startup timing [splash_security_step]: ${securitySw.elapsedMilliseconds} ms');
 
       if (!mounted) return;
@@ -82,16 +93,7 @@ class _SplashScreenState extends State<SplashScreen> {
         );
       }
       if (!mounted) return;
-      if (walletProvider.hasWallet) {
-        Navigator.pushReplacementNamed(context, LockScreen.routeName);
-      } else {
-        Navigator.pushReplacementNamed(
-          context,
-          walletProvider.needsRecovery
-              ? WalletImportScreen.routeName
-              : OnboardingScreen.routeName,
-        );
-      }
+      Navigator.pushReplacementNamed(context, _startupFallbackRoute(walletProvider));
     } finally {
       startupSw.stop();
       debugPrint('Startup timing [splash_total]: ${startupSw.elapsedMilliseconds} ms');

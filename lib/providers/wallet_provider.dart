@@ -36,6 +36,7 @@ class WalletProvider extends ChangeNotifier {
   // ── load ──────────────────────────────────────────────────────────────────
 
   /// Loads the persisted wallet (if any) from secure storage.
+  /// History refresh continues asynchronously in background to keep startup fast.
   Future<void> loadWallet() async {
     final sw = Stopwatch()..start();
     _setLoading();
