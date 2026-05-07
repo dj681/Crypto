@@ -126,7 +126,7 @@ class WalletProvider extends ChangeNotifier {
     _status = WalletStatus.idle;
     notifyListeners();
     if (userId != null && userId.isNotEmpty) {
-      unawaited(_firebaseUserService.deleteUserProfile(userId));
+      await _firebaseUserService.deleteUserProfile(userId);
     }
   }
 
