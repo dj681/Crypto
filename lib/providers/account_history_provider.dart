@@ -19,10 +19,16 @@ class AccountHistoryProvider extends ChangeNotifier {
   // ── persistence ────────────────────────────────────────────────────────────
 
   Future<void> loadState() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw != null) {
-      _entries = AccountEntry.listFromJson(raw);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_key);
+      if (raw != null) {
+        _entries = AccountEntry.listFromJson(raw);
+      }
+    } catch (e, st) {
+      debugPrint(
+        'AccountHistoryProvider.loadState failed – keeping defaults: $e\n$st',
+      );
     }
     notifyListeners();
   }
