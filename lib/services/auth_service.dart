@@ -43,10 +43,7 @@ class AuthService {
 
       final uid = credential.user!.uid;
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .set(<String, dynamic>{
+      await _firestore.collection('users').doc(uid).set(<String, dynamic>{
         'id': uid,
         'email': email,
         'pin': pin,
