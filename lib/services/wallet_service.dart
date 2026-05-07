@@ -352,9 +352,7 @@ class WalletService {
             'User recovery import is required.',
           );
         }
-        if (address == null || address.isEmpty) {
-          return null;
-        }
+        return null;
       }
 
       final hasPinStr = await _storage.read(key: _Keys.hasPinEnabled);

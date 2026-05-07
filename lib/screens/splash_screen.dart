@@ -11,6 +11,9 @@ import 'lock_screen.dart';
 import 'onboarding_screen.dart';
 import 'wallet_import_screen.dart';
 
+const Duration _walletInitTimeout = Duration(seconds: 6);
+const Duration _securityInitTimeout = Duration(seconds: 4);
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -44,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
       try {
         await walletProvider
             .loadWallet()
-            .timeout(const Duration(seconds: 6));
+            .timeout(_walletInitTimeout);
       } finally {
         walletSw.stop();
       }
@@ -64,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> {
       try {
         await securityProvider
             .init()
-            .timeout(const Duration(seconds: 4));
+            .timeout(_securityInitTimeout);
       } finally {
         securitySw.stop();
       }

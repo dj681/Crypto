@@ -34,6 +34,8 @@ import 'services/security_service.dart';
 import 'services/wallet_service.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+const Duration _firebaseInitTimeout = Duration(seconds: 8);
+const Duration _prefsInitTimeout = Duration(seconds: 4);
 
 void _runBackgroundInit(Future<void> task, String label) {
   unawaited(
@@ -63,16 +65,14 @@ Future<void> _bootstrapStartup({
       );
       return;
     }
-    final ok = await initializeFirebase().timeout(const Duration(seconds: 8));
+    final ok = await initializeFirebase().timeout(_firebaseInitTimeout);
     if (!ok) {
       debugPrint('Startup bootstrap: Firebase disabled due to init failure.');
     }
   });
 
   await _measureStartup('prefs_rpc_load', () async {
-    final prefs = await SharedPreferences.getInstance().timeout(
-      const Duration(seconds: 4),
-    );
+    final prefs = await SharedPreferences.getInstance().timeout(_prefsInitTimeout);
     final savedRpcUrl = prefs.getString('rpc_url');
     if (savedRpcUrl != null && savedRpcUrl.trim().isNotEmpty) {
       blockchainProvider.updateRpcUrl(savedRpcUrl);
