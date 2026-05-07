@@ -84,12 +84,17 @@ bin/
    flutter doctor
    ```
 
-2. Installer les dépendances :
+2. (Important) Régénérer les plateformes Flutter si `android/` et `ios/` sont absents :
+   ```bash
+   flutter create . --platforms android,ios,web
+   ```
+
+3. Installer les dépendances :
    ```
    flutter pub get
    ```
 
-3. Lancer l'application :
+4. Lancer l'application :
    ```
    flutter run
    ```
@@ -291,8 +296,10 @@ Si la variable est absente ou vide, l'app utilise directement l'API CoinGecko
 
 ## Configuration Android requise
 
-Dans `android/app/build.gradle`, s'assurer que :
-- `minSdkVersion` >= 23 (requis par `local_auth` pour la biométrie)
+Après `flutter create . --platforms android,ios,web`, vérifier :
+- dans `android/app/build.gradle.kts` : `minSdk = 23` (ou supérieur),
+- dans `android/app/src/main/kotlin/.../MainActivity.kt` (ou `.java`) :
+  `MainActivity` doit étendre `FlutterFragmentActivity` pour la biométrie (`local_auth`).
 
 ## Dépendances clés
 
