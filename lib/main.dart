@@ -23,6 +23,7 @@ import 'screens/pin_setup_screen.dart';
 import 'screens/receive_screen.dart';
 import 'screens/send_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/signup_entry_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/wallet_create_screen.dart';
@@ -190,6 +191,7 @@ class _MyCryptoSafeAppState extends State<MyCryptoSafeApp>
       routes: {
         SplashScreen.routeName: (context) => const SplashScreen(),
         OnboardingScreen.routeName: (context) => const OnboardingScreen(),
+        SignUpEntryScreen.routeName: (context) => const SignUpEntryScreen(),
         SignUpScreen.routeName: (context) => const SignUpScreen(),
         WalletPasswordSetupScreen.routeName: (context) =>
             const WalletPasswordSetupScreen(),
