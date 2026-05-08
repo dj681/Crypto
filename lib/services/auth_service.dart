@@ -6,6 +6,9 @@ import 'package:flutter/foundation.dart';
 /// Handles Firebase Authentication and the corresponding Firestore profile
 /// creation for new user accounts.
 class AuthService {
+  static const String _firebaseNotInitializedMessage =
+      'Firebase n\'est pas initialisé. Veuillez configurer les variables FIREBASE_*.';
+
   AuthService({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
@@ -18,18 +21,14 @@ class AuthService {
   bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
   FirebaseAuth get _auth {
     if (!_isFirebaseReady) {
-      throw SignUpException(
-        'Firebase n\'est pas initialisé. Veuillez configurer les variables FIREBASE_*.',
-      );
+      throw SignUpException(_firebaseNotInitializedMessage);
     }
     return _authOverride ?? FirebaseAuth.instance;
   }
 
   FirebaseFirestore get _firestore {
     if (!_isFirebaseReady) {
-      throw SignUpException(
-        'Firebase n\'est pas initialisé. Veuillez configurer les variables FIREBASE_*.',
-      );
+      throw SignUpException(_firebaseNotInitializedMessage);
     }
     return _firestoreOverride ?? FirebaseFirestore.instance;
   }
@@ -47,9 +46,7 @@ class AuthService {
     required String password,
   }) async {
     if (!_isFirebaseReady) {
-      throw SignUpException(
-        'Firebase n\'est pas initialisé. Veuillez configurer les variables FIREBASE_*.',
-      );
+      throw SignUpException(_firebaseNotInitializedMessage);
     }
 
     try {
