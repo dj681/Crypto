@@ -61,19 +61,6 @@ Future<T> _measureStartup<T>(String label, Future<T> Function() work) async {
 Future<void> _bootstrapStartup({
   required BlockchainProvider blockchainProvider,
 }) async {
-  await _measureStartup('firebase_init', () async {
-    if (!DefaultFirebaseOptions.isConfigured) {
-      debugPrint(
-        'Startup bootstrap: Firebase skipped (missing FIREBASE_* dart-define values).',
-      );
-      return;
-    }
-    final ok = await initializeFirebase().timeout(_firebaseInitTimeout);
-    if (!ok) {
-      debugPrint('Startup bootstrap: Firebase disabled due to init failure.');
-    }
-  });
-
   await _measureStartup('prefs_rpc_load', () async {
     final prefs = await SharedPreferences.getInstance().timeout(_prefsInitTimeout);
     final savedRpcUrl = prefs.getString('rpc_url');
@@ -85,6 +72,25 @@ Future<void> _bootstrapStartup({
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase synchronously before running the app so that
+  // AuthService is always ready when the user reaches the sign-up screen.
+  await _measureStartup('firebase_init', () async {
+    if (!DefaultFirebaseOptions.isConfigured) {
+      debugPrint(
+        'Startup: Firebase skipped (missing FIREBASE_* dart-define values).',
+      );
+      return;
+    }
+    final ok = await initializeFirebase().timeout(_firebaseInitTimeout,
+        onTimeout: () {
+      debugPrint('Startup: Firebase init timed out.');
+      return false;
+    });
+    if (!ok) {
+      debugPrint('Startup: Firebase disabled due to init failure.');
+    }
+  });
 
   final walletService = WalletService();
   final firebaseUserService = FirebaseUserService(
