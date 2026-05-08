@@ -33,7 +33,7 @@ class FirebaseUserService {
     required bool hasPinEnabled,
     required bool hasBiometricsEnabled,
     required bool isAdmin,
-    bool hasBackupConfirmed = true,
+    bool hasBackupConfirmed = false,
   }) async {
     if (!_enabled || !_isFirebaseReady) return;
 
@@ -83,7 +83,7 @@ class FirebaseUserService {
     }
   }
 
-  Future<Map<String, dynamic>?> getUserProfile(String _) async {
+  Future<Map<String, dynamic>?> getUserProfile(String _unusedLegacyUserId) async {
     if (!_enabled || !_isFirebaseReady) return null;
 
     try {
@@ -98,7 +98,7 @@ class FirebaseUserService {
     }
   }
 
-  Future<void> deleteUserProfile(String _) async {
+  Future<void> deleteUserProfile(String _unusedLegacyUserId) async {
     if (!_enabled || !_isFirebaseReady) return;
 
     try {

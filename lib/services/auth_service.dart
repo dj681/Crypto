@@ -93,6 +93,8 @@ class AuthService {
     await _users.doc(uid).set(<String, dynamic>{
       'uid': uid,
       'onboardingStep': 'wallet_password_set',
+      'walletCreated': false,
+      'hasBackupConfirmed': false,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

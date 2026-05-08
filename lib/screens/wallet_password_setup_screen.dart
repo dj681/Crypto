@@ -26,7 +26,8 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   final _authService = AuthService();
   final _walletPasswordService = WalletPasswordService();
 
-  late final String _recoveryWords;
+  String? _recoveryWords;
+  bool _didInitRecoveryWords = false;
   bool _backedUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -34,9 +35,11 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   String? _errorMessage;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInitRecoveryWords) return;
     _recoveryWords = context.read<WalletProvider>().generateMnemonic();
+    _didInitRecoveryWords = true;
   }
 
   @override
@@ -73,7 +76,7 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
       await _walletPasswordService.setWalletPassword(_passwordController.text);
       await _authService.markWalletPasswordSet(uid: uid);
 
-      await context.read<WalletProvider>().createWallet(_recoveryWords);
+      await context.read<WalletProvider>().createWallet(_recoveryWords!);
       if (!mounted) return;
       await context.read<MarketProvider>().resetState();
       if (!mounted) return;
@@ -104,7 +107,13 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final words = _recoveryWords.trim().split(RegExp(r'\s+'));
+    final recoveryWords = _recoveryWords;
+    if (recoveryWords == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final words = recoveryWords.trim().split(RegExp(r'\s+'));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Mot de passe portefeuille')),
@@ -216,7 +225,7 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: _recoveryWords));
+                          Clipboard.setData(ClipboardData(text: recoveryWords));
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content:

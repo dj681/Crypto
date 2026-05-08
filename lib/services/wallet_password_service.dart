@@ -23,6 +23,9 @@ class WalletPasswordService {
   final FlutterSecureStorage _storage;
 
   Future<void> setWalletPassword(String password) async {
+    if (password.length < 10) {
+      throw ArgumentError('Le mot de passe portefeuille doit contenir au moins 10 caractères.');
+    }
     final salt = _randomBytes(_saltLength);
     final derived = _pbkdf2HmacSha256(
       password: Uint8List.fromList(utf8.encode(password)),
