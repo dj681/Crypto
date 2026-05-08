@@ -16,9 +16,23 @@ class AuthService {
   final FirebaseFirestore? _firestoreOverride;
 
   bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
-  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
-  FirebaseFirestore get _firestore =>
-      _firestoreOverride ?? FirebaseFirestore.instance;
+  FirebaseAuth get _auth {
+    if (!_isFirebaseReady) {
+      throw SignUpException(
+        'Firebase n\'est pas initialisé. Veuillez configurer les variables FIREBASE_*.',
+      );
+    }
+    return _authOverride ?? FirebaseAuth.instance;
+  }
+
+  FirebaseFirestore get _firestore {
+    if (!_isFirebaseReady) {
+      throw SignUpException(
+        'Firebase n\'est pas initialisé. Veuillez configurer les variables FIREBASE_*.',
+      );
+    }
+    return _firestoreOverride ?? FirebaseFirestore.instance;
+  }
 
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection('users');
