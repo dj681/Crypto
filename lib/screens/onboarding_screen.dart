@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'signup_screen.dart';
+import 'signup_entry_screen.dart';
 import 'wallet_create_screen.dart';
 import 'wallet_import_screen.dart';
 
@@ -70,9 +70,9 @@ class OnboardingScreen extends StatelessWidget {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, SignUpScreen.routeName);
+                  Navigator.pushNamed(context, SignUpEntryScreen.routeName);
                 },
-                child: const Text('S\'inscrire avec e-mail'),
+                child: const Text('S\'inscrire'),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
