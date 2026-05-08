@@ -55,8 +55,6 @@ class FirebaseUserService {
         'email': _authOrDefault.currentUser?.email,
         'emailVerified': _authOrDefault.currentUser?.emailVerified ?? false,
         'authProvider': provider,
-        'walletUserId': userId,
-        'address': address,
         'walletAddress': address,
         'walletCreated': true,
         'onboardingStep': 'wallet_ready',

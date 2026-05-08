@@ -104,8 +104,7 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
       debugPrint('Wallet password setup failed [validation]: ${e.message}');
       if (!mounted) return;
       setState(
-        () => _errorMessage =
-            e.message is String ? e.message as String : 'Entrée invalide.',
+        () => _errorMessage = e.message.toString(),
       );
     } catch (e) {
       debugPrint('Wallet password setup failed: $e');
