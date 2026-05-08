@@ -94,7 +94,6 @@ class AuthService {
       'uid': uid,
       'onboardingStep': 'wallet_password_set',
       'walletCreated': false,
-      'hasBackupConfirmed': false,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

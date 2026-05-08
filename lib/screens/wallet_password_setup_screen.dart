@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -96,10 +97,13 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
         HomeScreen.routeName,
         (route) => false,
       );
-    } on SignUpException catch (e) {
-      debugPrint('Wallet password setup failed [signup]: ${e.message}');
+    } on FirebaseException catch (e) {
+      debugPrint('Wallet password setup failed [firebase]: ${e.code} ${e.message}');
       if (!mounted) return;
-      setState(() => _errorMessage = e.message);
+      setState(
+        () => _errorMessage =
+            'Erreur Firebase: ${e.message ?? 'opération impossible'}',
+      );
     } on ArgumentError catch (e) {
       debugPrint('Wallet password setup failed [validation]: ${e.message}');
       if (!mounted) return;
