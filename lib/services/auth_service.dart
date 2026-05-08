@@ -9,13 +9,16 @@ class AuthService {
   AuthService({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  })  : _authOverride = auth,
+        _firestoreOverride = firestore;
 
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore;
+  final FirebaseAuth? _authOverride;
+  final FirebaseFirestore? _firestoreOverride;
 
   bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection('users');
