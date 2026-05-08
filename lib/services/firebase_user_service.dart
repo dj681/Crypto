@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 
 /// Handles non-sensitive user profile sync to Firestore.
 ///
-/// Document path: `users/{userId}` where `userId` comes from WalletService.
+/// Document path: `users/{uid}` where `uid` is the Firebase Auth user ID.
 class FirebaseUserService {
   FirebaseUserService({
     FirebaseAuth? auth,
@@ -33,6 +33,7 @@ class FirebaseUserService {
     required bool hasPinEnabled,
     required bool hasBiometricsEnabled,
     required bool isAdmin,
+    bool hasBackupConfirmed = true,
   }) async {
     if (!_enabled || !_isFirebaseReady) return;
 
@@ -41,14 +42,26 @@ class FirebaseUserService {
       final ownerUid = _authOrDefault.currentUser?.uid;
       if (ownerUid == null || ownerUid.isEmpty) return;
 
-      final docRef = _users.doc(userId);
+      final docRef = _users.doc(ownerUid);
+      final provider = _authOrDefault.currentUser?.providerData.isNotEmpty == true
+          ? _authOrDefault.currentUser!.providerData.first.providerId
+          : (_authOrDefault.currentUser?.isAnonymous == true
+              ? 'anonymous'
+              : 'unknown');
       final payload = <String, dynamic>{
-        'userId': userId,
+        'uid': ownerUid,
+        'email': _authOrDefault.currentUser?.email,
+        'emailVerified': _authOrDefault.currentUser?.emailVerified ?? false,
+        'authProvider': provider,
+        'walletUserId': userId,
         'address': address,
+        'walletAddress': address,
+        'walletCreated': true,
+        'onboardingStep': 'wallet_ready',
+        'hasBackupConfirmed': hasBackupConfirmed,
         'hasPinEnabled': hasPinEnabled,
         'hasBiometricsEnabled': hasBiometricsEnabled,
         'isAdmin': isAdmin,
-        'ownerUid': ownerUid,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
@@ -70,12 +83,14 @@ class FirebaseUserService {
     }
   }
 
-  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+  Future<Map<String, dynamic>?> getUserProfile(String _) async {
     if (!_enabled || !_isFirebaseReady) return null;
 
     try {
       await _ensureSignedIn();
-      final doc = await _users.doc(userId).get();
+      final uid = _authOrDefault.currentUser?.uid;
+      if (uid == null || uid.isEmpty) return null;
+      final doc = await _users.doc(uid).get();
       return doc.data();
     } catch (e, st) {
       debugPrint('Firestore read failed: $e\n$st');
@@ -83,12 +98,14 @@ class FirebaseUserService {
     }
   }
 
-  Future<void> deleteUserProfile(String userId) async {
+  Future<void> deleteUserProfile(String _) async {
     if (!_enabled || !_isFirebaseReady) return;
 
     try {
       await _ensureSignedIn();
-      await _users.doc(userId).delete();
+      final uid = _authOrDefault.currentUser?.uid;
+      if (uid == null || uid.isEmpty) return;
+      await _users.doc(uid).delete();
     } on FirebaseException catch (e, st) {
       debugPrint('Firestore delete failed [${e.code}]: ${e.message}\n$st');
     } catch (e, st) {

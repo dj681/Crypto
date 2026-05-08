@@ -1,14 +1,50 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow create: if request.auth != null
-        && request.resource.data.userId == userId
-        && request.resource.data.ownerUid == request.auth.uid;
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
 
-      allow read, update, delete: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid
-        && resource.data.userId == userId;
+    function hasOnlyAllowedKeys(data) {
+      return data.keys().hasOnly([
+        'uid',
+        'email',
+        'authProvider',
+        'emailVerified',
+        'onboardingStep',
+        'walletCreated',
+        'walletAddress',
+        'hasBackupConfirmed',
+        'hasPinEnabled',
+        'hasBiometricsEnabled',
+        'createdAt',
+        'updatedAt',
+        'walletUserId',
+        'address',
+        'isAdmin'
+      ]);
+    }
+
+    function hasNoSensitiveKeys(data) {
+      return !('pin' in data)
+        && !('pinHash' in data)
+        && !('recoverywords' in data)
+        && !('recoveryWords' in data)
+        && !('mnemonic' in data)
+        && !('privateKey' in data)
+        && !('privateKeyHex' in data)
+        && !('walletPassword' in data)
+        && !('walletPasswordHash' in data)
+        && !('walletPasswordSalt' in data);
+    }
+
+    match /users/{uid} {
+      allow create, update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && hasOnlyAllowedKeys(request.resource.data)
+        && hasNoSensitiveKeys(request.resource.data);
+
+      allow read, delete: if isOwner(uid);
     }
   }
 }

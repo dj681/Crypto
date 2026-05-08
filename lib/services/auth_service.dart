@@ -17,17 +17,17 @@ class AuthService {
 
   bool get _isFirebaseReady => Firebase.apps.isNotEmpty;
 
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _firestore.collection('users');
+
   /// Creates a new account with [email] and [password] via Firebase Auth,
-  /// then immediately stores [pin] and [recoveryWords] alongside the user's
-  /// UID in the Firestore `Users` collection.
+  /// then initializes a minimal profile in Firestore `users/{uid}`.
   ///
   /// Throws [SignUpException] with a localised message on known errors
   /// (email already in use, weak password, invalid email).
   Future<UserCredential> signUp({
     required String email,
     required String password,
-    required String pin,
-    required String recoveryWords,
   }) async {
     if (!_isFirebaseReady) {
       throw SignUpException(
@@ -43,11 +43,20 @@ class AuthService {
 
       final uid = credential.user!.uid;
 
-      await _firestore.collection('Users').doc(uid).set(<String, dynamic>{
-        'id': uid,
-        'pin': pin,
-        'recoverywords': recoveryWords,
-      });
+      await _users.doc(uid).set(<String, dynamic>{
+        'uid': uid,
+        'email': credential.user?.email ?? email.trim(),
+        'authProvider': 'password',
+        'emailVerified': credential.user?.emailVerified ?? false,
+        'onboardingStep': 'auth_created',
+        'walletCreated': false,
+        'walletAddress': null,
+        'hasBackupConfirmed': false,
+        'hasPinEnabled': false,
+        'hasBiometricsEnabled': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       return credential;
     } on FirebaseAuthException catch (e, st) {
@@ -77,6 +86,35 @@ class AuthService {
       debugPrint('SignUp unexpected error: $e\n$st');
       throw SignUpException('Une erreur inattendue s\'est produite\u00a0: $e');
     }
+  }
+
+  Future<void> markWalletPasswordSet({required String uid}) async {
+    if (!_isFirebaseReady) return;
+    await _users.doc(uid).set(<String, dynamic>{
+      'uid': uid,
+      'onboardingStep': 'wallet_password_set',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> markWalletReady({
+    required String uid,
+    required String walletAddress,
+    required bool hasBackupConfirmed,
+    required bool hasPinEnabled,
+    required bool hasBiometricsEnabled,
+  }) async {
+    if (!_isFirebaseReady) return;
+    await _users.doc(uid).set(<String, dynamic>{
+      'uid': uid,
+      'walletCreated': true,
+      'walletAddress': walletAddress,
+      'hasBackupConfirmed': hasBackupConfirmed,
+      'hasPinEnabled': hasPinEnabled,
+      'hasBiometricsEnabled': hasBiometricsEnabled,
+      'onboardingStep': 'wallet_ready',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 }
 

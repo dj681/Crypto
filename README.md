@@ -102,7 +102,7 @@ bin/
 ### Configuration Firebase (Firestore)
 
 1. Créer un projet sur https://console.firebase.google.com puis activer :
-   - **Authentication** → fournisseur **Anonymous**
+   - **Authentication** → fournisseur **Email/Password**
    - **Cloud Firestore** (mode production)
 
 2. Générer la configuration FlutterFire :
@@ -128,8 +128,8 @@ bin/
    firebase deploy --only firestore:rules
    ```
 
-Le document Firestore utilisateur est stocké dans `users/{userId}` où `userId`
-est l'identifiant déjà généré par `WalletService`.
+Le document Firestore utilisateur est stocké dans `users/{uid}` où `uid`
+est l'identifiant Firebase Auth de l'utilisateur.
 
 ### Backend (recommandé)
 
@@ -315,7 +315,7 @@ Après `flutter create . --platforms android,ios,web`, vérifier :
 | `shared_preferences` | Préférences non-sensibles (URL RPC) |
 | `crypto` | Hachage SHA-256 du PIN |
 | `firebase_core` | Initialisation Firebase |
-| `firebase_auth` | Authentification anonyme pour session Firestore |
+| `firebase_auth` | Authentification Email/Mot de passe |
 | `cloud_firestore` | Stockage cloud des données utilisateur non-sensibles |
 
 ## Note sur la dérivation de clé
