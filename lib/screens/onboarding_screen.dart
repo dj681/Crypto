@@ -72,7 +72,7 @@ class OnboardingScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushNamed(context, SignUpScreen.routeName);
                 },
-                child: const Text('S’inscrire avec e-mail'),
+                child: const Text('S\'inscrire avec e-mail'),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
