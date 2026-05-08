@@ -96,6 +96,17 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
         HomeScreen.routeName,
         (route) => false,
       );
+    } on SignUpException catch (e) {
+      debugPrint('Wallet password setup failed [signup]: ${e.message}');
+      if (!mounted) return;
+      setState(() => _errorMessage = e.message);
+    } on ArgumentError catch (e) {
+      debugPrint('Wallet password setup failed [validation]: ${e.message}');
+      if (!mounted) return;
+      setState(
+        () => _errorMessage =
+            e.message is String ? e.message as String : 'Entrée invalide.',
+      );
     } catch (e) {
       debugPrint('Wallet password setup failed: $e');
       if (!mounted) return;

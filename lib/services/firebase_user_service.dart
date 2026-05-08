@@ -85,7 +85,7 @@ class FirebaseUserService {
     }
   }
 
-  Future<Map<String, dynamic>?> getUserProfile(String _unusedLegacyUserId) async {
+  Future<Map<String, dynamic>?> getUserProfile() async {
     if (!_enabled || !_isFirebaseReady) return null;
 
     try {
@@ -100,7 +100,7 @@ class FirebaseUserService {
     }
   }
 
-  Future<void> deleteUserProfile(String _unusedLegacyUserId) async {
+  Future<void> deleteUserProfile() async {
     if (!_enabled || !_isFirebaseReady) return;
 
     try {
