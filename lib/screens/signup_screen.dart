@@ -47,7 +47,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, WalletPasswordSetupScreen.routeName);
+      Navigator.pushNamed(context, WalletPasswordSetupScreen.routeName);
     } on SignUpException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (e) {

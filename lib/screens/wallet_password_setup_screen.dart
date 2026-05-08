@@ -28,7 +28,6 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   final _walletPasswordService = WalletPasswordService();
 
   String? _recoveryWords;
-  bool _hasInitializedRecoveryWords = false;
   bool _backedUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -36,11 +35,14 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   String? _errorMessage;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_hasInitializedRecoveryWords) return;
-    _recoveryWords = context.read<WalletProvider>().generateMnemonic();
-    _hasInitializedRecoveryWords = true;
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _recoveryWords != null) return;
+      setState(() {
+        _recoveryWords = context.read<WalletProvider>().generateMnemonic();
+      });
+    });
   }
 
   @override
