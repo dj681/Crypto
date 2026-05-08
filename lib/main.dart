@@ -27,6 +27,7 @@ import 'screens/signup_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/wallet_create_screen.dart';
 import 'screens/wallet_import_screen.dart';
+import 'screens/wallet_password_setup_screen.dart';
 import 'services/blockchain_service.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/firebase_user_service.dart';
@@ -190,6 +191,8 @@ class _MyCryptoSafeAppState extends State<MyCryptoSafeApp>
         SplashScreen.routeName: (context) => const SplashScreen(),
         OnboardingScreen.routeName: (context) => const OnboardingScreen(),
         SignUpScreen.routeName: (context) => const SignUpScreen(),
+        WalletPasswordSetupScreen.routeName: (context) =>
+            const WalletPasswordSetupScreen(),
         WalletCreateScreen.routeName: (context) => const WalletCreateScreen(),
         WalletImportScreen.routeName: (context) => const WalletImportScreen(),
         HomeScreen.routeName: (context) => const HomeScreen(),

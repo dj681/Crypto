@@ -132,7 +132,7 @@ class WalletProvider extends ChangeNotifier {
     final userId = _wallet?.userId;
     await _service.clearWallet();
     if (userId != null && userId.isNotEmpty) {
-      await _firebaseUserService.deleteUserProfile(userId);
+      await _firebaseUserService.deleteUserProfile();
     }
     _wallet = null;
     _history = [];
