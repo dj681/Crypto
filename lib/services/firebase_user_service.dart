@@ -43,11 +43,13 @@ class FirebaseUserService {
       if (ownerUid == null || ownerUid.isEmpty) return;
 
       final docRef = _users.doc(ownerUid);
-      final provider = _authOrDefault.currentUser?.providerData.isNotEmpty == true
-          ? _authOrDefault.currentUser!.providerData.first.providerId
-          : (_authOrDefault.currentUser?.isAnonymous == true
-              ? 'anonymous'
-              : 'unknown');
+      final currentUser = _authOrDefault.currentUser;
+      var provider = 'unknown';
+      if (currentUser?.providerData.isNotEmpty == true) {
+        provider = currentUser!.providerData.first.providerId;
+      } else if (currentUser?.isAnonymous == true) {
+        provider = 'anonymous';
+      }
       final payload = <String, dynamic>{
         'uid': ownerUid,
         'email': _authOrDefault.currentUser?.email,

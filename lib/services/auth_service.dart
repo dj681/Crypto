@@ -56,7 +56,7 @@ class AuthService {
         'hasBiometricsEnabled': false,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      });
 
       return credential;
     } on FirebaseAuthException catch (e, st) {

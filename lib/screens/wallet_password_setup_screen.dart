@@ -27,7 +27,7 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   final _walletPasswordService = WalletPasswordService();
 
   String? _recoveryWords;
-  bool _didInitRecoveryWords = false;
+  bool _hasInitializedRecoveryWords = false;
   bool _backedUp = false;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -37,9 +37,9 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_didInitRecoveryWords) return;
+    if (_hasInitializedRecoveryWords) return;
     _recoveryWords = context.read<WalletProvider>().generateMnemonic();
-    _didInitRecoveryWords = true;
+    _hasInitializedRecoveryWords = true;
   }
 
   @override
@@ -97,8 +97,11 @@ class _WalletPasswordSetupScreenState extends State<WalletPasswordSetupScreen> {
         (route) => false,
       );
     } catch (e) {
+      debugPrint('Wallet password setup failed: $e');
       if (!mounted) return;
-      setState(() => _errorMessage = 'Erreur\u00a0: $e');
+      setState(
+        () => _errorMessage = 'Impossible de finaliser l’inscription. Réessayez.',
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -20,6 +20,7 @@ class WalletPasswordService {
   static const int _saltLength = 16;
   static const int _iterations = 120000;
   static const int _outputLength = 32;
+  static final Random _secureRandom = Random.secure();
   final FlutterSecureStorage _storage;
 
   Future<void> setWalletPassword(String password) async {
@@ -44,9 +45,8 @@ class WalletPasswordService {
   }
 
   static Uint8List _randomBytes(int length) {
-    final random = Random.secure();
     return Uint8List.fromList(
-      List<int>.generate(length, (_) => random.nextInt(256)),
+      List<int>.generate(length, (_) => _secureRandom.nextInt(256)),
     );
   }
 
